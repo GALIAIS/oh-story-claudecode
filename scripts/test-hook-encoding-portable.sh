@@ -66,6 +66,34 @@ for MODE in default gbk; do
   [ "$(run_guard_py "$MODE" 'short/正文.md')" = 0 ] && pass "[$MODE] short allowed, 小节大纲 present" || bad "[$MODE] short should allow when 小节大纲 present"
 done
 
+# ===== Part 1b：Windows 盘符绝对路径分类（issue #184，任何平台可跑）=====
+# Windows + Git Bash 下 Claude Code 传入盘符绝对路径（F:/... 或 F:\...）。旧 case 只认 /*，
+# 把它当相对路径拼成 $ROOT/F:/...，找错 大纲/ 目录 → 误报细纲缺失。修复后盘符路径按绝对路径处理。
+# POSIX runner 无真实盘符：用反证法——fixture 只放在「旧代码会拼出来的」$ROOT/C:/<book> 下。
+#   修复后：guard 把 C:/<book> 当绝对路径（→ 文件系统根 /C:/<book>，不存在）→ 找不到 fixture → block(2)
+#   旧代码：拼成 $ROOT/C:/<book> 命中 fixture → allow(0)
+# 以 block(2) 证明盘符路径已按绝对路径处理。（真实 Windows 上同样的绝对处理会命中真盘符下的
+# 真细纲而放行，方向相反，此处只验「是否按绝对路径分类」这一修复点。）
+echo "--- Part 1b: Windows drive-letter absolute path classification (issue #184) ---"
+if mkdir -p "$P1/C:/book184/大纲" 2>/dev/null && : > "$P1/C:/book184/大纲/细纲_第2章.md" 2>/dev/null; then
+  run_guard_drive() { # $1 file_path(JSON-escaped) -> exit code
+    local ec=0
+    printf '{"tool_name":"Write","tool_input":{"file_path":"%s","content":"x"}}' "$1" \
+      | CLAUDE_PROJECT_DIR="$P1" bash "$P1/.claude/hooks/guard-outline-before-prose.sh" >/dev/null 2>&1 || ec=$?
+    printf '%s' "$ec"
+  }
+  [ "$(run_guard_drive 'C:/book184/正文/第2章_x.md')" = 2 ] \
+    && pass "[win] forward-slash drive path treated as absolute (not root-joined)" \
+    || bad  "[win] forward-slash drive path was root-joined — issue #184 regression"
+  # 反斜杠路径在真实 JSON 里是转义的（\\）；json.loads 解出单反斜杠交给 bash，case 分支再归一。
+  [ "$(run_guard_drive 'C:\\book184\\正文\\第2章_x.md')" = 2 ] \
+    && pass "[win] backslash drive path treated as absolute (separators normalized)" \
+    || bad  "[win] backslash drive path mishandled — issue #184 regression"
+  rm -rf "$P1/C:"
+else
+  echo "  SKIP: 文件系统不支持含 ':' 的目录名（无法构造盘符 fixture）"
+fi
+
 # ===== Part 2：真实 GBK 区域下跑全部 hook =====
 echo "--- Part 2: real GBK locale (LANG/LC_ALL=zh_CN.GBK) end-to-end ---"
 # 探测「可用」的 GBK 类 locale：不看 `locale -a` 列表（Cygwin/MSYS2 会按需合成而不列出），

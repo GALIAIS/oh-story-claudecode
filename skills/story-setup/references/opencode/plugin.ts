@@ -155,7 +155,9 @@ function preCompactOutput(): string {
   return lines.join("\n")
 }
 
-// 相对路径按项目根解析（对齐 guard-outline-before-prose.sh 的 $ROOT/$TARGET）
+// 相对路径按项目根解析（对齐 guard-outline-before-prose.sh 的 $ROOT/$TARGET）。
+// Windows 盘符绝对路径（F:/... 或 F:\...）先把反斜杠归一，再交给平台感知的 path.isAbsolute
+// 判断（win32 上 F:/... 为绝对），与 bash hook 的 [A-Za-z]:[/\\]* 分支等价（issue #184）。
 function resolveTarget(root: string, target: string): string {
   const normalized = target.replace(/\\/g, "/")
   return path.isAbsolute(normalized) ? normalized : path.resolve(root, normalized)
