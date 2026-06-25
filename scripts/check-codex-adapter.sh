@@ -43,6 +43,20 @@ PY
 
 echo "  OK JSON/Python syntax"
 
+# Windows encoding safety (issue #164 class): the hook carries Chinese 正文/细纲 over
+# stdin/stdout, so it must use UTF-8 bytes, not Windows' ANSI code page text streams.
+HOOK_PY="$CODEX_DIR/hooks/story_codex_hook.py"
+assert_grep 'sys\.stdin\.buffer\.read' "$HOOK_PY" "Codex hook must read stdin as UTF-8 bytes"
+assert_grep 'sys\.stdout\.buffer\.write' "$HOOK_PY" "Codex hook must write stdout as UTF-8 bytes"
+if grep -qE 'sys\.stdin\.read\(\)|sys\.stdout\.write\(' "$HOOK_PY"; then
+  fail "Codex hook must not use text-mode sys.stdin.read()/sys.stdout.write() (Windows ANSI hazard)"
+fi
+if grep -nE '\.read_text\(\)' "$HOOK_PY"; then
+  fail "Codex hook read_text() must pass encoding='utf-8' (Windows ANSI hazard)"
+fi
+
+echo "  OK Windows encoding safety (UTF-8 stdio + file reads)"
+
 # Repo skill discovery: .agents/skills is a symlink to skills/, so Codex sees the
 # single canonical copy (no second materialized skill tree).
 skill_count="$(find skills -maxdepth 2 -name SKILL.md | wc -l | tr -d ' ')"

@@ -21,7 +21,11 @@ HOOK_CWD: Path | None = None
 
 def read_hook_input() -> dict[str, Any]:
     global HOOK_CWD
-    raw = sys.stdin.read()
+    # Read raw UTF-8 bytes, not the locale-decoded text stream: Codex/Claude tool
+    # payloads carry Chinese 正文/细纲 paths, and Windows Python defaults stdin to the
+    # ANSI code page (cp1252/cp936), which mojibakes them so the prose guard never
+    # matches and silently allows (issue #164 class — same fix as the bash hooks).
+    raw = sys.stdin.buffer.read().decode("utf-8", "replace")
     if not raw.strip():
         return {}
     try:
@@ -38,7 +42,9 @@ def read_hook_input() -> dict[str, Any]:
 
 def emit(obj: dict[str, Any] | None) -> None:
     if obj:
-        sys.stdout.write(json.dumps(obj, ensure_ascii=False))
+        # Write UTF-8 bytes directly: Windows Python stdout defaults to the ANSI code
+        # page and would garble/raise on the Chinese deny reasons and additionalContext.
+        sys.stdout.buffer.write(json.dumps(obj, ensure_ascii=False).encode("utf-8"))
 
 
 def project_root() -> Path:

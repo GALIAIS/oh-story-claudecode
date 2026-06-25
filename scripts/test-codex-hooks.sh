@@ -25,20 +25,23 @@ run_hook() {
   (cd "$ROOT" && printf '%s' "$payload" | CODEX_PROJECT_DIR="$ROOT" python3 "$HOOK" "$event")
 }
 
+# Read the hook's stdout as UTF-8 bytes (not locale-decoded text): the hook emits
+# UTF-8 Chinese deny reasons, and Windows Python defaults stdin to the ANSI code page,
+# which would raise UnicodeDecodeError here even when the hook output is correct.
 assert_json() {
-  python3 -c 'import json,sys; json.load(sys.stdin)' >/dev/null
+  python3 -c 'import json,sys; json.loads(sys.stdin.buffer.read().decode("utf-8"))' >/dev/null
 }
 
 assert_denied() {
   local out="$1" label="$2"
   printf '%s' "$out" | assert_json || fail "$label did not emit valid JSON: $out"
-  printf '%s' "$out" | python3 -c 'import json,sys; o=json.load(sys.stdin); h=o.get("hookSpecificOutput",{}); assert h.get("hookEventName")=="PreToolUse" and h.get("permissionDecision")=="deny" and h.get("permissionDecisionReason")' || fail "$label was not denied: $out"
+  printf '%s' "$out" | python3 -c 'import json,sys; o=json.loads(sys.stdin.buffer.read().decode("utf-8")); h=o.get("hookSpecificOutput",{}); assert h.get("hookEventName")=="PreToolUse" and h.get("permissionDecision")=="deny" and h.get("permissionDecisionReason")' || fail "$label was not denied: $out"
 }
 
 assert_additional_context() {
   local out="$1" label="$2"
   printf '%s' "$out" | assert_json || fail "$label did not emit valid JSON: $out"
-  printf '%s' "$out" | python3 -c 'import json,sys; o=json.load(sys.stdin); h=o.get("hookSpecificOutput",{}); assert h.get("additionalContext")' || fail "$label missing additionalContext: $out"
+  printf '%s' "$out" | python3 -c 'import json,sys; o=json.loads(sys.stdin.buffer.read().decode("utf-8")); h=o.get("hookSpecificOutput",{}); assert h.get("additionalContext")' || fail "$label missing additionalContext: $out"
 }
 
 assert_empty() {
@@ -133,7 +136,7 @@ launcher_cmd="$(
   NON_GIT="$NON_GIT" python3 - <<'PY'
 import json, os
 from pathlib import Path
-hooks = json.loads((Path(os.environ["NON_GIT"]) / ".codex/hooks.json").read_text())
+hooks = json.loads((Path(os.environ["NON_GIT"]) / ".codex/hooks.json").read_text(encoding="utf-8"))
 print(hooks["hooks"]["PreToolUse"][0]["hooks"][0]["command"])
 PY
 )"
