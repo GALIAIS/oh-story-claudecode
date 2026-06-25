@@ -1,7 +1,8 @@
 .DS_Store
 **/.omc/
 .claude/
-.agents/
+.agents/*
+!.agents/skills
 .codebuddy/
 AGENTS.md
 CLAUDE.md
