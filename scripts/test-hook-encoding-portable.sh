@@ -94,6 +94,35 @@ else
   echo "  SKIP: 文件系统不支持含 ':' 的目录名（无法构造盘符 fixture）"
 fi
 
+# ===== Part 1c：真实 Windows 盘符路径（cygpath，仅 Windows/MSYS 跑）=====
+# 1b 是 POSIX 反证；这里在真实 Windows/MSYS 上用 cygpath 把 $P1 映射成 C:/... 盘符路径，
+# 直接验用户可见行为：细纲在则放行、细纲缺则拦截——而不是反向的分类反证。POSIX 无 cygpath → SKIP。
+echo "--- Part 1c: real Windows drive-letter path via cygpath (issue #184) ---"
+if command -v cygpath >/dev/null 2>&1; then
+  WINROOT="$(cygpath -m "$P1" 2>/dev/null || true)"
+  case "$WINROOT" in
+    [A-Za-z]:/*)
+      mkdir -p "$P1/winbook/正文" "$P1/winbook/大纲"
+      run_guard_win() { local ec=0; printf '{"tool_name":"Write","tool_input":{"file_path":"%s","content":"x"}}' "$1" \
+        | CLAUDE_PROJECT_DIR="$P1" bash "$P1/.claude/hooks/guard-outline-before-prose.sh" >/dev/null 2>&1 || ec=$?; printf '%s' "$ec"; }
+      : > "$P1/winbook/大纲/细纲_第3章.md"
+      [ "$(run_guard_win "$WINROOT/winbook/正文/第3章_x.md")" = 0 ] \
+        && pass "[win] real drive path allowed when 细纲 present" \
+        || bad  "[win] real drive path should allow when 细纲 present"
+      rm -f "$P1/winbook/大纲/细纲_第3章.md"
+      [ "$(run_guard_win "$WINROOT/winbook/正文/第3章_x.md")" = 2 ] \
+        && pass "[win] real drive path blocked when 细纲 missing" \
+        || bad  "[win] real drive path should block when 细纲 missing"
+      rm -rf "$P1/winbook"
+      ;;
+    *)
+      echo "  SKIP: cygpath present but did not yield a drive-letter path ($WINROOT)"
+      ;;
+  esac
+else
+  echo "  SKIP: cygpath not available (not a Windows/MSYS runner)"
+fi
+
 # ===== Part 2：真实 GBK 区域下跑全部 hook =====
 echo "--- Part 2: real GBK locale (LANG/LC_ALL=zh_CN.GBK) end-to-end ---"
 # 探测「可用」的 GBK 类 locale：不看 `locale -a` 列表（Cygwin/MSYS2 会按需合成而不列出），
