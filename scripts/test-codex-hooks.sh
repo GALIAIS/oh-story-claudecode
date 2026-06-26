@@ -88,6 +88,14 @@ out="$(run_hook pre-tool-prose-guard '{"tool_name":"Bash","tool_input":{"command
 assert_empty "$out" "prose path as echo arg before non-prose redirect is not denied"
 out="$(run_hook pre-tool-prose-guard '{"tool_name":"Bash","tool_input":{"command":"echo x | tee book/正文/第7章_x.md"}}')"
 assert_denied "$out" "tee write to prose without outline is still denied"
+out="$(run_hook pre-tool-prose-guard '{"tool_name":"Bash","tool_input":{"command":"touch book/正文/第7章_x.md"}}')"
+assert_denied "$out" "touch write to prose without outline is denied"
+out="$(run_hook pre-tool-prose-guard '{"tool_name":"Bash","tool_input":{"command":"cp draft.md book/正文/第7章_x.md"}}')"
+assert_denied "$out" "cp write to prose without outline is denied"
+out="$(run_hook pre-tool-prose-guard '{"tool_name":"Bash","tool_input":{"command":"cp draft.md book/正文/第7章_x.md 2>/dev/null"}}')"
+assert_denied "$out" "cp write with trailing redirect is denied (dest still parsed)"
+out="$(run_hook pre-tool-prose-guard '{"tool_name":"Bash","tool_input":{"command":"cp book/正文/第1章.md backup.md"}}')"
+assert_empty "$out" "cp FROM a prose file (source, not dest) is not denied"
 
 echo "  OK prose command-scan precision"
 
@@ -137,6 +145,20 @@ out="$(cd "$TMP_DIR" && printf '{"cwd":"%s","tool_name":"Write","tool_input":{"f
 assert_denied "$out" "cwd-based root resolution"
 
 echo "  OK cwd-based root resolution"
+
+# __file__ self-location (the Windows-critical resolver) on ALL platforms: with a bogus
+# CODEX_PROJECT_DIR (env skipped) and an unrelated cwd, the hook must resolve root from its own
+# .codex/hooks/ location. Discriminating: 细纲 exists at the true root, so a wrong root → deny;
+# only __file__-derived root → allow. (The valid-env tests above let env win and never hit this.)
+: > "$ROOT/book/大纲/细纲_第8章.md"
+out="$(cd "$TMP_DIR" && CODEX_PROJECT_DIR="$TMP_DIR/does-not-exist" python3 "$HOOK" pre-tool-prose-guard <<'JSON'
+{"tool_name":"Write","tool_input":{"file_path":"book/正文/第8章_x.md","content":"x"}}
+JSON
+)"
+assert_empty "$out" "__file__ self-location resolves root when env is bogus and cwd unrelated"
+rm -f "$ROOT/book/大纲/细纲_第8章.md"
+
+echo "  OK __file__ self-location (all platforms)"
 
 NON_GIT="$TMP_DIR/non-git-story-project"
 NON_GIT_HOOK="$NON_GIT/.codex/hooks/story_codex_hook.py"

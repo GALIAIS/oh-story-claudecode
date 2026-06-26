@@ -51,8 +51,10 @@ assert_grep 'sys\.stdout\.buffer\.write' "$HOOK_PY" "Codex hook must write stdou
 if grep -qE 'sys\.stdin\.read\(\)|sys\.stdout\.write\(' "$HOOK_PY"; then
   fail "Codex hook must not use text-mode sys.stdin.read()/sys.stdout.write() (Windows ANSI hazard)"
 fi
-if grep -nE '\.read_text\(\)' "$HOOK_PY"; then
-  fail "Codex hook read_text() must pass encoding='utf-8' (Windows ANSI hazard)"
+# Every read_text( must pass encoding= (not just the bare ()) — the likely #164-class regression
+# is dropping only the encoding kwarg while keeping other args.
+if grep -nE '\.read_text\(' "$HOOK_PY" | grep -qv 'encoding='; then
+  fail "every Codex hook read_text() must pass encoding='utf-8' (Windows ANSI hazard)"
 fi
 
 echo "  OK Windows encoding safety (UTF-8 stdio + file reads)"

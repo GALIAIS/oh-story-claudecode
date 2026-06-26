@@ -170,10 +170,19 @@ def extract_prose_targets_from_command(command: str) -> list[str]:
     targets: list[str] = []
     for m in re.finditer(r">>?\s*" + token, command):  # > dest, >> dest, cat >dest
         targets.append(m.group(1))
-    for m in re.finditer(r"\b(?:tee(?:\s+-a)?|touch)\s+" + token, command):
+    # Use an explicit start/separator class, not \b: \b is Unicode-aware in Python re but ASCII-only
+    # in JS, so an ASCII boundary keeps this identical to opencode plugin.ts (parity).
+    for m in re.finditer(r"(?:^|[\s;&|(){}<>])(?:tee(?:\s+-a)?|touch)\s+" + token, command):
         targets.append(m.group(1))
-    for m in re.finditer(r"\b(?:cp|mv)\b[^\n]*?\s" + token + r"\s*(?:$|;|&)", command, re.M):
-        targets.append(m.group(1))  # cp/mv ... <dest as last arg>
+    # cp/mv: the write destination is the last positional arg of the segment. Parse it (regex can't
+    # tell a 正文 source from a 正文 dest, and a trailing 2>/dev/null / >log / || breaks end-anchoring).
+    for seg in re.split(r"[;&|\n]", command):
+        seg = re.split(r"\d*[<>]", seg)[0]  # drop redirections (incl. 2>) and everything after
+        words = seg.split()
+        if len(words) >= 2 and words[0] in ("cp", "mv"):
+            positionals = [w for w in words[1:] if not w.startswith("-")]
+            if positionals and "正文" in positionals[-1]:
+                targets.append(positionals[-1].strip("'\""))
     return targets
 
 
@@ -417,9 +426,13 @@ def compact_summary(event: str) -> None:
     else:
         lines.append("Active state: not found")
     try:
-        changed = subprocess.check_output(["git", "-C", str(root), "diff", "--name-only"], text=True, stderr=subprocess.DEVNULL)
-        staged = subprocess.check_output(["git", "-C", str(root), "diff", "--name-only", "--cached"], text=True, stderr=subprocess.DEVNULL)
-        lines.append(f"Git: {len([x for x in changed.splitlines() if x])} unstaged, {len([x for x in staged.splitlines() if x])} staged")
+        # -z + bytes so a Chinese filename under a user-global core.quotepath=false can't raise
+        # UnicodeDecodeError on a Windows ANSI code page (these are counts only).
+        changed = subprocess.check_output(["git", "-C", str(root), "-c", "core.quotepath=false", "diff", "--name-only", "-z"], stderr=subprocess.DEVNULL)
+        staged = subprocess.check_output(["git", "-C", str(root), "-c", "core.quotepath=false", "diff", "--name-only", "--cached", "-z"], stderr=subprocess.DEVNULL)
+        n_changed = len([x for x in changed.split(b"\0") if x])
+        n_staged = len([x for x in staged.split(b"\0") if x])
+        lines.append(f"Git: {n_changed} unstaged, {n_staged} staged")
     except Exception:
         pass
     emit({"systemMessage": "\n".join(lines)})
