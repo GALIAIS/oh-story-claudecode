@@ -4,7 +4,7 @@
 
 # oh-story-claudecode
 
-A web novel writing skill pack for Claude Code, OpenCode, OpenClaw, and Codex CLI. Covers the full pipeline for long-form and short-form Chinese web novels: trend scanning, deconstruction, writing, AI tone removal, and cover generation.
+A web novel writing skill pack for Claude Code, OpenCode, OpenClaw, Codex CLI, and workbuddy. Covers the full pipeline for long-form and short-form Chinese web novels: trend scanning, deconstruction, writing, AI tone removal, and cover generation.
 
 ## Core Approach
 
