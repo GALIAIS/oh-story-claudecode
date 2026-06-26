@@ -151,9 +151,9 @@ Codex 项目 hooks 部署到 `.codex/hooks.json`，hook 脚本部署到 `.codex/
 
 1. 读取 `skills/story-setup/references/codex/hooks/hooks.json`
 2. 读取用户现有 `.codex/hooks.json`（如存在），提取 hooks 部分
-3. 对每个 hook event（SessionStart、PreToolUse、PreCompact、PostCompact、Stop）按 `command` 去重追加
+3. 对每个 hook event（SessionStart、PreToolUse、PreCompact、PostCompact、Stop）按 `command` 去重追加；每个 hook 同时携带 `command`（POSIX sh，Unix）与 `commandWindows`（cmd.exe，Windows）两个字段，整体保留不要拆开
 4. 保留用户已有其他 hooks/config，不覆盖未知字段
-5. 写入 `.codex/hooks.json` 后提示用户：项目 `.codex/` 层需要被 Codex trust，非 managed command hooks 还需要在 `/hooks` 中 review/trust 后才会运行
+5. 写入 `.codex/hooks.json` 后提示用户：项目 `.codex/` 层需要被 Codex trust，非 managed command hooks 还需要在 `/hooks` 中 review/trust 后才会运行；Windows 下 Codex 以 cmd.exe 跑 hook，走 `commandWindows`（cwd 为项目根时生效，否则 no-op），正文守卫在 Windows 非项目根目录下不强制拦截
 
 ## OpenClaw skills-only 部署算法（target_cli 含 openclaw 时）
 

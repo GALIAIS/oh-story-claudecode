@@ -116,18 +116,27 @@ python3 - "$CODEX_DIR/hooks/hooks.json" "$CODEX_DIR/hooks/story_codex_hook.py" <
 import json, sys
 from pathlib import Path
 hooks = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))["hooks"]
-cmds = [h["command"] for arr in hooks.values() for blk in arr for h in blk["hooks"]]
-assert cmds, "no launcher commands found"
-for c in cmds:
+all_hooks = [h for arr in hooks.values() for blk in arr for h in blk["hooks"]]
+assert all_hooks, "no launcher commands found"
+for h in all_hooks:
+    c = h["command"]
     assert '[ -f "$HOOK" ] || exit 0' in c, f"launcher missing no-op guard: {c[:80]}"
     assert 'CODEX_PROJECT_DIR="$PROJECT_ROOT" "$PYBIN" "$HOOK"' in c, f"launcher must propagate root to Python: {c[:80]}"
     assert '"$PYBIN" "$PROJECT_ROOT/.codex/hooks/story_codex_hook.py"' not in c, f"launcher runs hook without root propagation/no-op guard: {c[:80]}"
+    # Codex runs Windows hooks via cmd.exe (%COMSPEC% /C), not a POSIX shell, so every hook
+    # needs a cmd.exe-safe commandWindows; otherwise the POSIX command is fed to cmd.exe and breaks.
+    w = h.get("commandWindows")
+    assert w, f"hook missing commandWindows (Windows = cmd.exe /C): {c[:60]}"
+    assert "story_codex_hook.py" in w, f"commandWindows must invoke the hook: {w}"
+    for posixism in ("${", "$(", "[ -f", "for PYBIN", "; do ", "&& break"):
+        assert posixism not in w, f"commandWindows must be cmd.exe-safe (found POSIX {posixism!r}): {w}"
+    assert c.split()[-1] == w.split()[-1], f"command/commandWindows event mismatch: {c.split()[-1]} vs {w.split()[-1]}"
 hook_py = Path(sys.argv[2]).read_text(encoding="utf-8")
 assert "Path(__file__)" in hook_py and "_deployed_root_from_file" in hook_py, \
     "story_codex_hook.py must self-locate the project root from __file__ (Windows MSYS-path safety)"
 PY
 
-echo "  OK launcher root propagation + no-op guard + Python self-location"
+echo "  OK launcher root propagation + no-op guard + Python self-location + cmd.exe commandWindows"
 
 # Reference-path ordering: where the agent body lists the numbered read order, Codex must read
 # .codex/skills/... first (story-setup deploys the bundle there); otherwise the body contradicts
