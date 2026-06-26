@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "for PYBIN in python3 python py; do \"$PYBIN\" -c \"\" 2>/dev/null && break; done; PROJECT_ROOT=\"${CODEX_PROJECT_DIR:-${CLAUDE_PROJECT_DIR:-}}\"; if [ -z \"$PROJECT_ROOT\" ] || [ ! -f \"$PROJECT_ROOT/.codex/hooks/story_codex_hook.py\" ]; then SEARCH_DIR=\"$PWD\"; while [ \"$SEARCH_DIR\" != \"/\" ] && [ ! -f \"$SEARCH_DIR/.codex/hooks/story_codex_hook.py\" ]; do SEARCH_DIR=\"$(dirname \"$SEARCH_DIR\")\"; done; PROJECT_ROOT=\"$SEARCH_DIR\"; fi; \"$PYBIN\" \"$PROJECT_ROOT/.codex/hooks/story_codex_hook.py\" session-start",
+            "command": "for PYBIN in python3 python py; do \"$PYBIN\" -c \"\" 2>/dev/null && break; done; PROJECT_ROOT=\"${CODEX_PROJECT_DIR:-${CLAUDE_PROJECT_DIR:-}}\"; if [ -z \"$PROJECT_ROOT\" ] || [ ! -f \"$PROJECT_ROOT/.codex/hooks/story_codex_hook.py\" ]; then SEARCH_DIR=\"$PWD\"; while [ \"$SEARCH_DIR\" != \"/\" ] && [ ! -f \"$SEARCH_DIR/.codex/hooks/story_codex_hook.py\" ]; do SEARCH_DIR=\"$(dirname \"$SEARCH_DIR\")\"; done; PROJECT_ROOT=\"$SEARCH_DIR\"; fi; HOOK=\"$PROJECT_ROOT/.codex/hooks/story_codex_hook.py\"; [ -f \"$HOOK\" ] || exit 0; CODEX_PROJECT_DIR=\"$PROJECT_ROOT\" \"$PYBIN\" \"$HOOK\" session-start",
             "timeout": 10,
             "statusMessage": "Loading story context"
           }
@@ -19,7 +19,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "for PYBIN in python3 python py; do \"$PYBIN\" -c \"\" 2>/dev/null && break; done; PROJECT_ROOT=\"${CODEX_PROJECT_DIR:-${CLAUDE_PROJECT_DIR:-}}\"; if [ -z \"$PROJECT_ROOT\" ] || [ ! -f \"$PROJECT_ROOT/.codex/hooks/story_codex_hook.py\" ]; then SEARCH_DIR=\"$PWD\"; while [ \"$SEARCH_DIR\" != \"/\" ] && [ ! -f \"$SEARCH_DIR/.codex/hooks/story_codex_hook.py\" ]; do SEARCH_DIR=\"$(dirname \"$SEARCH_DIR\")\"; done; PROJECT_ROOT=\"$SEARCH_DIR\"; fi; \"$PYBIN\" \"$PROJECT_ROOT/.codex/hooks/story_codex_hook.py\" pre-tool-prose-guard",
+            "command": "for PYBIN in python3 python py; do \"$PYBIN\" -c \"\" 2>/dev/null && break; done; PROJECT_ROOT=\"${CODEX_PROJECT_DIR:-${CLAUDE_PROJECT_DIR:-}}\"; if [ -z \"$PROJECT_ROOT\" ] || [ ! -f \"$PROJECT_ROOT/.codex/hooks/story_codex_hook.py\" ]; then SEARCH_DIR=\"$PWD\"; while [ \"$SEARCH_DIR\" != \"/\" ] && [ ! -f \"$SEARCH_DIR/.codex/hooks/story_codex_hook.py\" ]; do SEARCH_DIR=\"$(dirname \"$SEARCH_DIR\")\"; done; PROJECT_ROOT=\"$SEARCH_DIR\"; fi; HOOK=\"$PROJECT_ROOT/.codex/hooks/story_codex_hook.py\"; [ -f \"$HOOK\" ] || exit 0; CODEX_PROJECT_DIR=\"$PROJECT_ROOT\" \"$PYBIN\" \"$HOOK\" pre-tool-prose-guard",
             "timeout": 10,
             "statusMessage": "Checking story outline guard"
           }
@@ -30,7 +30,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "for PYBIN in python3 python py; do \"$PYBIN\" -c \"\" 2>/dev/null && break; done; PROJECT_ROOT=\"${CODEX_PROJECT_DIR:-${CLAUDE_PROJECT_DIR:-}}\"; if [ -z \"$PROJECT_ROOT\" ] || [ ! -f \"$PROJECT_ROOT/.codex/hooks/story_codex_hook.py\" ]; then SEARCH_DIR=\"$PWD\"; while [ \"$SEARCH_DIR\" != \"/\" ] && [ ! -f \"$SEARCH_DIR/.codex/hooks/story_codex_hook.py\" ]; do SEARCH_DIR=\"$(dirname \"$SEARCH_DIR\")\"; done; PROJECT_ROOT=\"$SEARCH_DIR\"; fi; \"$PYBIN\" \"$PROJECT_ROOT/.codex/hooks/story_codex_hook.py\" pre-tool-commit-advisory",
+            "command": "for PYBIN in python3 python py; do \"$PYBIN\" -c \"\" 2>/dev/null && break; done; PROJECT_ROOT=\"${CODEX_PROJECT_DIR:-${CLAUDE_PROJECT_DIR:-}}\"; if [ -z \"$PROJECT_ROOT\" ] || [ ! -f \"$PROJECT_ROOT/.codex/hooks/story_codex_hook.py\" ]; then SEARCH_DIR=\"$PWD\"; while [ \"$SEARCH_DIR\" != \"/\" ] && [ ! -f \"$SEARCH_DIR/.codex/hooks/story_codex_hook.py\" ]; do SEARCH_DIR=\"$(dirname \"$SEARCH_DIR\")\"; done; PROJECT_ROOT=\"$SEARCH_DIR\"; fi; HOOK=\"$PROJECT_ROOT/.codex/hooks/story_codex_hook.py\"; [ -f \"$HOOK\" ] || exit 0; CODEX_PROJECT_DIR=\"$PROJECT_ROOT\" \"$PYBIN\" \"$HOOK\" pre-tool-commit-advisory",
             "timeout": 15,
             "statusMessage": "Checking story commit warnings"
           }
@@ -43,7 +43,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "for PYBIN in python3 python py; do \"$PYBIN\" -c \"\" 2>/dev/null && break; done; PROJECT_ROOT=\"${CODEX_PROJECT_DIR:-${CLAUDE_PROJECT_DIR:-}}\"; if [ -z \"$PROJECT_ROOT\" ] || [ ! -f \"$PROJECT_ROOT/.codex/hooks/story_codex_hook.py\" ]; then SEARCH_DIR=\"$PWD\"; while [ \"$SEARCH_DIR\" != \"/\" ] && [ ! -f \"$SEARCH_DIR/.codex/hooks/story_codex_hook.py\" ]; do SEARCH_DIR=\"$(dirname \"$SEARCH_DIR\")\"; done; PROJECT_ROOT=\"$SEARCH_DIR\"; fi; \"$PYBIN\" \"$PROJECT_ROOT/.codex/hooks/story_codex_hook.py\" pre-compact",
+            "command": "for PYBIN in python3 python py; do \"$PYBIN\" -c \"\" 2>/dev/null && break; done; PROJECT_ROOT=\"${CODEX_PROJECT_DIR:-${CLAUDE_PROJECT_DIR:-}}\"; if [ -z \"$PROJECT_ROOT\" ] || [ ! -f \"$PROJECT_ROOT/.codex/hooks/story_codex_hook.py\" ]; then SEARCH_DIR=\"$PWD\"; while [ \"$SEARCH_DIR\" != \"/\" ] && [ ! -f \"$SEARCH_DIR/.codex/hooks/story_codex_hook.py\" ]; do SEARCH_DIR=\"$(dirname \"$SEARCH_DIR\")\"; done; PROJECT_ROOT=\"$SEARCH_DIR\"; fi; HOOK=\"$PROJECT_ROOT/.codex/hooks/story_codex_hook.py\"; [ -f \"$HOOK\" ] || exit 0; CODEX_PROJECT_DIR=\"$PROJECT_ROOT\" \"$PYBIN\" \"$HOOK\" pre-compact",
             "timeout": 10,
             "statusMessage": "Summarizing story context"
           }
@@ -56,7 +56,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "for PYBIN in python3 python py; do \"$PYBIN\" -c \"\" 2>/dev/null && break; done; PROJECT_ROOT=\"${CODEX_PROJECT_DIR:-${CLAUDE_PROJECT_DIR:-}}\"; if [ -z \"$PROJECT_ROOT\" ] || [ ! -f \"$PROJECT_ROOT/.codex/hooks/story_codex_hook.py\" ]; then SEARCH_DIR=\"$PWD\"; while [ \"$SEARCH_DIR\" != \"/\" ] && [ ! -f \"$SEARCH_DIR/.codex/hooks/story_codex_hook.py\" ]; do SEARCH_DIR=\"$(dirname \"$SEARCH_DIR\")\"; done; PROJECT_ROOT=\"$SEARCH_DIR\"; fi; \"$PYBIN\" \"$PROJECT_ROOT/.codex/hooks/story_codex_hook.py\" post-compact",
+            "command": "for PYBIN in python3 python py; do \"$PYBIN\" -c \"\" 2>/dev/null && break; done; PROJECT_ROOT=\"${CODEX_PROJECT_DIR:-${CLAUDE_PROJECT_DIR:-}}\"; if [ -z \"$PROJECT_ROOT\" ] || [ ! -f \"$PROJECT_ROOT/.codex/hooks/story_codex_hook.py\" ]; then SEARCH_DIR=\"$PWD\"; while [ \"$SEARCH_DIR\" != \"/\" ] && [ ! -f \"$SEARCH_DIR/.codex/hooks/story_codex_hook.py\" ]; do SEARCH_DIR=\"$(dirname \"$SEARCH_DIR\")\"; done; PROJECT_ROOT=\"$SEARCH_DIR\"; fi; HOOK=\"$PROJECT_ROOT/.codex/hooks/story_codex_hook.py\"; [ -f \"$HOOK\" ] || exit 0; CODEX_PROJECT_DIR=\"$PROJECT_ROOT\" \"$PYBIN\" \"$HOOK\" post-compact",
             "timeout": 10,
             "statusMessage": "Restoring story context hint"
           }
@@ -68,7 +68,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "for PYBIN in python3 python py; do \"$PYBIN\" -c \"\" 2>/dev/null && break; done; PROJECT_ROOT=\"${CODEX_PROJECT_DIR:-${CLAUDE_PROJECT_DIR:-}}\"; if [ -z \"$PROJECT_ROOT\" ] || [ ! -f \"$PROJECT_ROOT/.codex/hooks/story_codex_hook.py\" ]; then SEARCH_DIR=\"$PWD\"; while [ \"$SEARCH_DIR\" != \"/\" ] && [ ! -f \"$SEARCH_DIR/.codex/hooks/story_codex_hook.py\" ]; do SEARCH_DIR=\"$(dirname \"$SEARCH_DIR\")\"; done; PROJECT_ROOT=\"$SEARCH_DIR\"; fi; \"$PYBIN\" \"$PROJECT_ROOT/.codex/hooks/story_codex_hook.py\" stop",
+            "command": "for PYBIN in python3 python py; do \"$PYBIN\" -c \"\" 2>/dev/null && break; done; PROJECT_ROOT=\"${CODEX_PROJECT_DIR:-${CLAUDE_PROJECT_DIR:-}}\"; if [ -z \"$PROJECT_ROOT\" ] || [ ! -f \"$PROJECT_ROOT/.codex/hooks/story_codex_hook.py\" ]; then SEARCH_DIR=\"$PWD\"; while [ \"$SEARCH_DIR\" != \"/\" ] && [ ! -f \"$SEARCH_DIR/.codex/hooks/story_codex_hook.py\" ]; do SEARCH_DIR=\"$(dirname \"$SEARCH_DIR\")\"; done; PROJECT_ROOT=\"$SEARCH_DIR\"; fi; HOOK=\"$PROJECT_ROOT/.codex/hooks/story_codex_hook.py\"; [ -f \"$HOOK\" ] || exit 0; CODEX_PROJECT_DIR=\"$PROJECT_ROOT\" \"$PYBIN\" \"$HOOK\" stop",
             "timeout": 5
           }
         ]

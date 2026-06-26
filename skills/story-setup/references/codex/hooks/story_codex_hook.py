@@ -47,11 +47,40 @@ def emit(obj: dict[str, Any] | None) -> None:
         sys.stdout.buffer.write(json.dumps(obj, ensure_ascii=False).encode("utf-8"))
 
 
+def _deployed_root_from_file() -> Path | None:
+    """Self-locate the project root from this script's deployed path.
+
+    story-setup deploys this hook to <root>/.codex/hooks/story_codex_hook.py, so the
+    project root is __file__'s great-grandparent. This is the most reliable resolver on
+    Windows: the launcher computes the root in (Git Bash) shell as an MSYS path like
+    /c/proj, which does NOT survive as a native-Python env var or cwd — but __file__ is
+    always a native path. So a non-git project launched from a nested cwd still resolves.
+    """
+    try:
+        here = Path(__file__).resolve()
+    except Exception:
+        return None
+    if here.parent.name == "hooks" and here.parent.parent.name == ".codex":
+        root = here.parent.parent.parent
+        if root.is_dir():
+            return root
+    return None
+
+
 def project_root() -> Path:
     for env_name in ("CODEX_PROJECT_DIR", "CLAUDE_PROJECT_DIR"):
         value = os.environ.get(env_name)
-        if value and Path(value).is_dir():
-            return Path(value).resolve()
+        if not value:
+            continue
+        try:
+            candidate = Path(value)
+            if candidate.is_dir():
+                return candidate.resolve()
+        except Exception:
+            pass
+    deployed = _deployed_root_from_file()
+    if deployed is not None:
+        return deployed
     start = HOOK_CWD if HOOK_CWD and HOOK_CWD.is_dir() else Path.cwd()
     try:
         out = subprocess.check_output(
@@ -133,7 +162,19 @@ def resolve_target(root: Path, target: str) -> Path:
 
 
 def extract_prose_targets_from_command(command: str) -> list[str]:
-    return re.findall(r"[^\s'\"<>|;&()]*正文[^\s'\"<>|;&()]*", command)
+    # Only treat a 正文 path as a write target when it is the destination of an actual
+    # write op (redirection / tee / touch / cp|mv dest). Scanning the whole command would
+    # flag any heredoc body, doc string, or grep pattern that merely *mentions*
+    # 正文/第N章.md and wrongly deny the edit.
+    token = r"['\"]?([^\s'\"<>|;&()]*正文[^\s'\"<>|;&()]*)['\"]?"
+    targets: list[str] = []
+    for m in re.finditer(r">>?\s*" + token, command):  # > dest, >> dest, cat >dest
+        targets.append(m.group(1))
+    for m in re.finditer(r"\b(?:tee(?:\s+-a)?|touch)\s+" + token, command):
+        targets.append(m.group(1))
+    for m in re.finditer(r"\b(?:cp|mv)\b[^\n]*?\s" + token + r"\s*(?:$|;|&)", command, re.M):
+        targets.append(m.group(1))  # cp/mv ... <dest as last arg>
+    return targets
 
 
 def extract_apply_patch_targets(command: str) -> list[str]:

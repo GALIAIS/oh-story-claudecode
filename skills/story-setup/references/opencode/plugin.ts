@@ -161,13 +161,21 @@ function resolveTarget(root: string, target: string): string {
   return path.isAbsolute(normalized) ? normalized : path.resolve(root, normalized)
 }
 
-// 从 bash 命令里提取可能的「正文」写入目标，用于防止绕过 write/edit 守卫
+// 从 bash 命令里提取真正的「正文」写入目标（重定向 / tee / touch / cp|mv 目标），用于防止
+// 绕过 write/edit 守卫。只认真实写入目标，避免 heredoc 正文、文档字符串或 grep 模式里仅仅
+// “提到” 正文/第N章.md 就被误判为写正文（与 codex story_codex_hook.py 同实现，保持一致）。
 function extractProseTargets(cmd: string): string[] {
   const out: string[] = []
-  const re = /[^\s'"<>|;&()]*正文[^\s'"<>|;&()]*/g
-  let m: RegExpExecArray | null
-  while ((m = re.exec(cmd)) !== null) {
-    if (m[0]) out.push(m[0])
+  const patterns = [
+    />>?\s*['"]?([^\s'"<>|;&()]*正文[^\s'"<>|;&()]*)['"]?/g,
+    /\b(?:tee(?:\s+-a)?|touch)\s+['"]?([^\s'"<>|;&()]*正文[^\s'"<>|;&()]*)['"]?/g,
+    /\b(?:cp|mv)\b[^\n]*?\s['"]?([^\s'"<>|;&()]*正文[^\s'"<>|;&()]*)['"]?\s*(?:$|;|&)/gm,
+  ]
+  for (const re of patterns) {
+    let m: RegExpExecArray | null
+    while ((m = re.exec(cmd)) !== null) {
+      if (m[1]) out.push(m[1])
+    }
   }
   return out
 }

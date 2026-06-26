@@ -80,6 +80,17 @@ assert_empty "$out" "story-import long migration"
 
 echo "  OK outline-before-prose guard"
 
+# A Bash command that only MENTIONS a prose path (grep / echo arg / doc) must not be treated
+# as a write target; only real write ops (redirection / tee / touch / cp|mv dest) count.
+out="$(run_hook pre-tool-prose-guard '{"tool_name":"Bash","tool_input":{"command":"grep -n book/正文/第7章.md notes.md"}}')"
+assert_empty "$out" "command merely mentioning prose path is not denied"
+out="$(run_hook pre-tool-prose-guard '{"tool_name":"Bash","tool_input":{"command":"echo book/正文/第7章.md >> changelog.md"}}')"
+assert_empty "$out" "prose path as echo arg before non-prose redirect is not denied"
+out="$(run_hook pre-tool-prose-guard '{"tool_name":"Bash","tool_input":{"command":"echo x | tee book/正文/第7章_x.md"}}')"
+assert_denied "$out" "tee write to prose without outline is still denied"
+
+echo "  OK prose command-scan precision"
+
 cat > "$ROOT/book/正文/第1章.md" <<'TXT'
 年龄：18
 TXT
@@ -147,5 +158,28 @@ out="$(
 assert_denied "$out" "non-git deployment launcher root search"
 
 echo "  OK non-git deployment launcher root search"
+
+# Root propagation: non-git project, outline PRESENT at the true root, triggered from a nested
+# cwd → must ALLOW. The launcher resolves the root in shell; it must reach the Python hook
+# (via CODEX_PROJECT_DIR and/or the hook self-locating from __file__) instead of Python falling
+# back to the nested cwd and wrongly denying. This case also exercises Windows (Git Bash MSYS
+# path passed to native Python), which is exactly where naive env/cwd propagation breaks.
+: > "$NON_GIT/book/大纲/细纲_第4章.md"
+out="$(cd "$NON_GIT/nested/a/b"; unset CODEX_PROJECT_DIR CLAUDE_PROJECT_DIR; printf '{"tool_name":"Write","tool_input":{"file_path":"book/正文/第004章_非Git.md","content":"正文"}}' | eval "$launcher_cmd")"
+assert_empty "$out" "non-git nested cwd + outline present allows (root reaches Python hook)"
+rm -f "$NON_GIT/book/大纲/细纲_第4章.md"
+
+echo "  OK non-git nested root propagation"
+
+# Missing deployment: a cwd whose ancestors have no .codex/hooks/story_codex_hook.py → the
+# launcher must no-op (exit 0) silently, NOT run "//.codex/hooks/story_codex_hook.py" (which
+# happens if it treats "/" as the project root after an exhausted upward search).
+NO_DEPLOY="$TMP_DIR/no-deploy/x/y"
+mkdir -p "$NO_DEPLOY"
+out="$(cd "$NO_DEPLOY"; unset CODEX_PROJECT_DIR CLAUDE_PROJECT_DIR; printf '{"tool_name":"Write","tool_input":{"file_path":"book/正文/第1章.md","content":"正文"}}' | eval "$launcher_cmd" 2>&1)"
+assert_empty "$out" "missing deployment launcher no-ops silently"
+case "$out" in *//.codex*) fail "launcher executed //.codex/... on missing deployment: $out";; esac
+
+echo "  OK missing-deployment launcher no-op"
 echo ""
 echo "OK: Codex hook synthetic tests passed"

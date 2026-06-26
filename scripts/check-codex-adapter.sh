@@ -109,6 +109,44 @@ if grep -q 'git rev-parse' "$CODEX_DIR/hooks/hooks.json"; then
 fi
 assert_grep '\.codex/hooks/story_codex_hook\.py' "$CODEX_DIR/hooks/hooks.json" "deployment hooks must point at project .codex/hooks"
 
+# Every launcher must (a) propagate the resolved root to Python (CODEX_PROJECT_DIR=$PROJECT_ROOT)
+# and (b) no-op when the hook file is absent instead of running "//.codex/..." (root="/"). And
+# the Python hook must self-locate from __file__ so a Git Bash MSYS root still resolves on Windows.
+python3 - "$CODEX_DIR/hooks/hooks.json" "$CODEX_DIR/hooks/story_codex_hook.py" <<'PY'
+import json, sys
+from pathlib import Path
+hooks = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))["hooks"]
+cmds = [h["command"] for arr in hooks.values() for blk in arr for h in blk["hooks"]]
+assert cmds, "no launcher commands found"
+for c in cmds:
+    assert '[ -f "$HOOK" ] || exit 0' in c, f"launcher missing no-op guard: {c[:80]}"
+    assert 'CODEX_PROJECT_DIR="$PROJECT_ROOT" "$PYBIN" "$HOOK"' in c, f"launcher must propagate root to Python: {c[:80]}"
+    assert '"$PYBIN" "$PROJECT_ROOT/.codex/hooks/story_codex_hook.py"' not in c, f"launcher runs hook without root propagation/no-op guard: {c[:80]}"
+hook_py = Path(sys.argv[2]).read_text(encoding="utf-8")
+assert "Path(__file__)" in hook_py and "_deployed_root_from_file" in hook_py, \
+    "story_codex_hook.py must self-locate the project root from __file__ (Windows MSYS-path safety)"
+PY
+
+echo "  OK launcher root propagation + no-op guard + Python self-location"
+
+# Reference-path ordering: where the agent body lists the numbered read order, Codex must read
+# .codex/skills/... first (story-setup deploys the bundle there); otherwise the body contradicts
+# the appended Codex note and the agent reads non-existent .claude/.opencode paths first.
+python3 - "$CODEX_DIR/agents" <<'PY'
+import sys
+from pathlib import Path
+for path in sorted(Path(sys.argv[1]).glob("*.toml")):
+    text = path.read_text(encoding="utf-8")
+    if "1. `{项目根}/" not in text:
+        continue  # this agent has no numbered reference list
+    codex_i = text.find(".codex/skills/story-setup/references/agent-references/")
+    claude_i = text.find(".claude/skills/story-setup/references/agent-references/")
+    assert codex_i != -1, f"{path.name}: numbered reference list must include .codex/skills first"
+    assert claude_i == -1 or codex_i < claude_i, f"{path.name}: .codex/skills must precede .claude/skills"
+PY
+
+echo "  OK Codex agent reference-path ordering"
+
 assert_grep '\$story-setup|\$story-long-write|/skills' "$CODEX_DIR/AGENTS.md.tmpl" "Codex AGENTS template must mention skill invocation"
 assert_grep '\.codex/agents/\*\.toml' "$CODEX_DIR/AGENTS.md.tmpl" "Codex AGENTS template must mention custom agent location"
 assert_grep '\.codex/hooks\.json' "$CODEX_DIR/AGENTS.md.tmpl" "Codex AGENTS template must mention hooks location"

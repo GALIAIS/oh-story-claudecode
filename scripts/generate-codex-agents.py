@@ -70,9 +70,31 @@ def toml_list(values: list[str]) -> str:
     return "[" + ", ".join(repr(v).replace("'", '"') for v in values) + "]"
 
 
+# The Claude/OpenCode templates tell the agent to read references strictly in the order
+# .claude/skills -> .opencode/skills -> skills/. For Codex, story-setup deploys the bundle
+# to .codex/skills/..., so the agent must try that first; otherwise it reads non-existent
+# paths and the appended Codex note (which says ".codex/skills first") contradicts the body.
+_REF_BLOCK_RE = re.compile(
+    r"1\. `\{项目根\}/\.claude/skills/story-setup/references/agent-references/([^`]+)`\n"
+    r"2\. `\{项目根\}/\.opencode/skills/story-setup/references/agent-references/[^`]+`\n"
+    r"3\. `\{项目根\}/skills/story-setup/references/agent-references/[^`]+`"
+)
+
+
+def _codex_reference_order(match: "re.Match[str]") -> str:
+    fn = match.group(1)  # the {文件名} placeholder (or a concrete filename)
+    return (
+        f"1. `{{项目根}}/.codex/skills/story-setup/references/agent-references/{fn}`\n"
+        f"2. `{{项目根}}/.claude/skills/story-setup/references/agent-references/{fn}`\n"
+        f"3. `{{项目根}}/.opencode/skills/story-setup/references/agent-references/{fn}`\n"
+        f"4. `{{项目根}}/skills/story-setup/references/agent-references/{fn}`"
+    )
+
+
 def adapt_body_for_codex(body: str, name: str) -> str:
     """Translate Claude/OpenCode caller terminology to Codex custom-agent wording."""
     adapted = body.replace("subagent_type", "agent_type")
+    adapted = _REF_BLOCK_RE.sub(_codex_reference_order, adapted)
     return (
         adapted.rstrip()
         + "\n\n---\n\n"
