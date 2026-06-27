@@ -8,6 +8,10 @@
 # advisory，以及复读全量 / tier2 歧义词，仍由 workflow 收尾步骤的 check-ai-patterns /
 # check-degeneration 全量跑——本 hook 不部署也不依赖那两个检测器，是独立的轻量网。
 #
+# 覆盖范围：只在 PostToolUse 的 Write|Edit|MultiEdit 上触发。cat>/tee/cp/mv 等用 Bash
+# 写正文的路径绕过本 hook（Claude/OpenCode 侧 Bash 只做 pre-guard，无 post-write 兜底）；
+# 这类路径由 Codex 的 Stop 回合末 git 改动集扫描兜全。已知边界，非缺陷。
+#
 # 非阻塞（exit 0，advisory 提醒，不挡写作）；无发现时完全静默（不污染 context）；
 # 解释器不可用时静默放行（兜底不能反过来卡流程）。
 set -euo pipefail

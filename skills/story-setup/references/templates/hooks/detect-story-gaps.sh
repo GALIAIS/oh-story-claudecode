@@ -101,6 +101,9 @@ fi
 # 6. 跨批连续性兜底（追踪 staleness + 章节标题去重）——与 codex story_codex_hook.py 的
 # continuity_findings 同触发条件。会话起点提醒：续写前发现「写了章但 上下文.md 没跟上」
 # 或「两章撞名」。模型无关；无问题静默。探测真正可用的解释器（Windows Store 占位 exit 49）。
+# 扫描范围 repo-wide（与本文件上方的缺口检测一致），多书项目里非活跃书也会提醒——有意为之
+# （切书前也想知道断线），不按 .active-book 收窄。staleness 用 mtime 比较（+1 秒容差防同秒误报），
+# 是启发式 advisory：git checkout / 带 -p 的拷贝改 mtime 时可能偏差，只提醒不阻塞。
 CONT_PYBIN=""
 for c in python3 python py; do
   if "$c" -c "" >/dev/null 2>&1; then CONT_PYBIN="$c"; break; fi
