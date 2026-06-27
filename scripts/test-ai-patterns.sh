@@ -159,4 +159,80 @@ if (stutter.line !== 1) {
 }
 NODE
 
+# --- MEDIUM-1：碎句号混合行（叙述 + 引号内物件）不能被一个引号整行豁免（#188 review） ---
+FIXTURE3="$TMP_DIR/fixture-mixed-quote.md"
+printf '%s\n' '他站起。他看见“门”。风进来。他回头。灯灭了。心一沉。' > "$FIXTURE3"
+set +e
+node "$SCRIPT" --json "$FIXTURE3" > "$OUT"
+set -e
+node - "$OUT" <<'NODE'
+const fs = require('fs');
+const r = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+const st = r.findings.filter((f) => f.type === 'period-stutter');
+if (st.length !== 1) throw new Error('混合引号叙述应命中碎句号: ' + JSON.stringify(r.findings.map((f) => f.type)));
+if (st[0].severity !== 'advisory') throw new Error('period-stutter 应为 advisory');
+NODE
+
+# 纯对话成片短句仍豁免（体裁手法）。
+FIXTURE4="$TMP_DIR/fixture-pure-dialogue.md"
+printf '%s\n' '“走。”' '“快。”' '“跑。”' '“停。”' '“看。”' '“听。”' > "$FIXTURE4"
+set +e
+pure_out="$(node "$SCRIPT" "$FIXTURE4" 2>&1)"
+pure_status=$?
+set -e
+if [ "$pure_status" -ne 0 ]; then
+  echo "FAIL: 纯对话成片短句被误判碎句号 (exit $pure_status):" >&2
+  echo "$pure_out" >&2
+  exit 1
+fi
+
+# --- markdown 结构行不算长段落（#188 review 新发现）---
+FIXTURE5="$TMP_DIR/fixture-heading.md"
+node -e 'process.stdout.write("## " + "长".repeat(230) + "\n")' > "$FIXTURE5"
+set +e
+head_out="$(node "$SCRIPT" "$FIXTURE5" 2>&1)"
+head_status=$?
+set -e
+if [ "$head_status" -ne 0 ]; then
+  echo "FAIL: markdown 标题被误判 long-paragraph (exit $head_status):" >&2
+  echo "$head_out" >&2
+  exit 1
+fi
+
+# --- severity 字段 + --fail-on 语义：仅 advisory（long-paragraph）时默认退出 1，blocking 模式退出 0 ---
+FIXTURE6="$TMP_DIR/fixture-advisory.md"
+node -e 'process.stdout.write("他沿着长廊一直往里走，" + "走过一道又一道紧闭的木门，".repeat(16) + "终于在尽头停下。\n")' > "$FIXTURE6"
+set +e
+node "$SCRIPT" --json "$FIXTURE6" > "$OUT"
+adv_all=$?
+node "$SCRIPT" --fail-on=blocking "$FIXTURE6" >/dev/null 2>&1
+adv_blk=$?
+set -e
+node - "$OUT" <<'NODE'
+const fs = require('fs');
+const r = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+if (!r.findings.length) throw new Error('expected long-paragraph finding');
+if (!r.findings.every((f) => f.severity === 'advisory')) {
+  throw new Error('long-paragraph-only fixture 应全为 advisory: ' + JSON.stringify(r.findings.map((f) => f.severity)));
+}
+NODE
+[ "$adv_all" -eq 1 ] || { echo "FAIL: advisory-only 默认 --fail-on=all 应退出 1，实际 $adv_all" >&2; exit 1; }
+[ "$adv_blk" -eq 0 ] || { echo "FAIL: advisory-only --fail-on=blocking 应退出 0，实际 $adv_blk" >&2; exit 1; }
+
+# blocking（em-dash）：severity=blocking，--fail-on=blocking 退出 1。
+FIXTURE7="$TMP_DIR/fixture-blocking.md"
+printf '%s\n' '她停住——没说话。' > "$FIXTURE7"
+set +e
+node "$SCRIPT" --json "$FIXTURE7" > "$OUT"
+node "$SCRIPT" --fail-on=blocking "$FIXTURE7" >/dev/null 2>&1
+blk_blk=$?
+set -e
+node - "$OUT" <<'NODE'
+const fs = require('fs');
+const r = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+const dash = r.findings.find((f) => f.type === 'em-dash');
+if (!dash || dash.severity !== 'blocking') throw new Error('em-dash 应为 blocking: ' + JSON.stringify(dash));
+NODE
+[ "$blk_blk" -eq 1 ] || { echo "FAIL: em-dash --fail-on=blocking 应退出 1，实际 $blk_blk" >&2; exit 1; }
+
 echo "Prose pattern (碎句号/长段落/破折号) regression tests passed."
