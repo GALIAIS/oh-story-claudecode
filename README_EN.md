@@ -18,6 +18,8 @@ Professional authors follow a three-step method:
 
 Built around four pillars: reverse-engineering hits · plot modularization · layered state management · human-AI collaboration.
 
+> Starting in v0.6.20: long-form outline reinforcement — benchmark rhythm transfer (reflow a hit book's deconstructed pacing into your volume outline by normalized key points, with a chapter-summary fallback when the rhythm file is absent) and chapter positioning & tension-pacing (fixing "every chapter reads like a standalone short story": chapters are typed by their position in the unit-arc, so relationship/breathing/transition chapters no longer have to manufacture a hook and a payoff while still keeping read-through pull, with a "no emotional-motif clustering" guardrail; positioning is optional and non-quota).
+>
 > Starting in v0.6.19: Codex CLI support (`.agents/skills` repo discovery plus `$story-setup` deployment of `.codex/agents/*.toml` and `.codex/hooks.json`) and OpenClaw compatibility; custom style `设定/文风.md` takes priority over benchmarks; a deterministic post-write backstop (truncation / repetition / engineering-term / sentence-stutter detection); OpenCode subagents auto-assigned cost-tiered models to cut spend; and chapter outlines budgeted by word count to end the under-length rewrite loop.
 >
 > Starting in v0.6.18, the toolkit fully supports the OpenCode CLI (auto-discovered agents, command and hook adapters) and ships a built-in update reminder; serialized writing adds per-chapter dialogue-voice and style-drift self-checks, and cover generation crop-fills to each platform's exact size (e.g. 番茄 600×800).
