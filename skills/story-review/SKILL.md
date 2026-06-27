@@ -148,8 +148,8 @@ full/lean 模式下，主会话必须把“审查基准包摘要”直接写进�
    node scripts/check-ai-patterns.js --check <正文文件...>
    node scripts/check-degeneration.js --check <正文文件...>
    ```
-   - 将 `ellipsis`、`em-dash`、`double-hyphen`、`markdown-divider` 结果作为 `format` 或 `prose` findings 合并进报告；另外人工检查标点节奏是否通篇句号化或随机堆砌，脚本不替代语气判断。
-   - 将 `not-is-comparison` 结果作为 `prose` findings 合并进报告，修复建议写成：删否定铺垫，直接写后项，或改为动作/细节呈现。
+   - 将 `ellipsis`、`em-dash`、`double-hyphen`、`markdown-divider` 结果作为 `format` 或 `prose` findings 合并进报告；其中 `em-dash` 破折号修复建议按功能改写（打断→动作/短句，拖长音→省略或动作，插入说明→逗号/冒号，**不要一律改句号**）。另外人工检查标点节奏是否通篇句号化或随机堆砌，脚本不替代语气判断。
+   - 将 `not-is-comparison` 结果作为 `prose` findings 合并进报告，修复建议写成：删否定铺垫，直接写后项，或改为动作/细节呈现。`check-ai-patterns.js` 另报告 `period-stutter`（碎句号→按目标句长合并成中长句）与 `long-paragraph`（>200 字→按镜头/动作/视线断段），一并并入 `prose` findings。
    - `check-degeneration.js` 报告模型退化（逐字复读/截断/占位符/工程词泄漏），每条带 `severity: blocking|advisory`：blocking（复读/截断/tier1 工程词）作为 S1/S2 `prose` findings，修复建议是「重新生成该段，不是改写」；advisory（tier2 章节/歧义词）作为 S4。
    - `story-review` 不修改文件；需要自动修复时建议转 `/story-deslop`。
    - 默认 `--quote-mode keep`，不把知乎盐言短篇的 `「」` 当作问题；只有项目明确指定引号风格时才检查对应转换建议。

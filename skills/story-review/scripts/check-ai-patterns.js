@@ -22,6 +22,13 @@ const HARD_SEPARATORS = new Set(['。', '.', '！', '!', '？', '?']);
 const MAX_NEGATIVE_SPAN = 80;
 const MAX_POSITIVE_SPAN = 80;
 
+// 碎句号：连续 STUTTER_MIN_RUN 个「叙述」短句（每句可见字数 ≤ STUTTER_MAX_SENTENCE）无呼吸。
+// 只数叙述句，跳过对话/弹幕/系统播报（成片短句是这些体裁的正常形态，不算碎句号）。
+const STUTTER_MIN_RUN = 6;
+const STUTTER_MAX_SENTENCE = 5;
+// 长段落：单段原始字符数超过阈值即提示按镜头断段（手机阅读保守阈值，正常单段远低于此）。
+const LONG_PARAGRAPH_CHARS = 200;
+
 // either-or「不是A就是B / 不是A也是B」里紧贴的「是」是连词的一部分，不是肯定项系动词。
 // 含「不」以沿用「不是A，也不是B」第二个否定段不算翻转的旧排除。
 const COMPACT_EITHER_OR_PREV = new Set(['不', '就', '也']);
@@ -94,6 +101,7 @@ function scanDocument(input) {
   let fence = null;
   let inFrontMatter = hasYamlFrontMatter(lines);
   let block = [];
+  const proseLines = [];
 
   const flushBlock = () => {
     if (block.length === 0) return;
@@ -125,10 +133,112 @@ function scanDocument(input) {
     }
 
     block.push({ text: line, lineNo: index + 1 });
+    proseLines.push({ text: line, lineNo: index + 1 });
   }
 
   flushBlock();
+  findings.push(...scanProsePatterns(proseLines));
+  findings.sort((a, b) => a.line - b.line || a.column - b.column);
   return findings;
+}
+
+// 段落级检测：碎句号（连续短叙述句）、长段落、破折号（按功能改写，非机械替换）。
+function scanProsePatterns(proseLines) {
+  const findings = [];
+
+  for (const { text, lineNo } of proseLines) {
+    const trimmed = text.trim();
+    if (!trimmed || isDivider(trimmed)) continue;
+
+    const dashPattern = /——|—|--+/g;
+    let dash;
+    while ((dash = dashPattern.exec(text)) !== null) {
+      findings.push({
+        line: lineNo,
+        column: dash.index + 1,
+        type: 'em-dash',
+        message: '破折号按功能改写：打断→动作 beat/短句，拖长音→省略或动作，插入说明→逗号/冒号；勿一律改句号。',
+        excerpt: compact(text.slice(Math.max(0, dash.index - 8), dash.index + dash[0].length + 8)),
+      });
+    }
+
+    if (trimmed.length > LONG_PARAGRAPH_CHARS) {
+      findings.push({
+        line: lineNo,
+        column: 1,
+        type: 'long-paragraph',
+        message: `段落过长（${trimmed.length} 字）：按镜头/新动作/新线索/视线切换断段，别一段到底。`,
+        excerpt: compact(trimmed.slice(0, 40)),
+      });
+    }
+  }
+
+  findings.push(...findPeriodStutter(proseLines));
+  return findings;
+}
+
+function findPeriodStutter(proseLines) {
+  const findings = [];
+  let runLen = 0;
+  let runStartLine = null;
+  let runSample = [];
+
+  const flush = () => {
+    if (runLen >= STUTTER_MIN_RUN) {
+      findings.push({
+        line: runStartLine,
+        column: 1,
+        type: 'period-stutter',
+        message: `碎句号：连续 ${runLen} 个短句无呼吸；按目标句长把碎句合并成中长句、补回画面与连接（见 writing-craft 句长节奏）。`,
+        excerpt: compact(runSample.join(' ')),
+      });
+    }
+    runLen = 0;
+    runStartLine = null;
+    runSample = [];
+  };
+
+  for (const { text, lineNo } of proseLines) {
+    const trimmed = text.trim();
+    if (!trimmed) continue; // 空行是一句一段排版，不打断叙述连贯
+    if (!isNarrativeLine(trimmed)) {
+      flush(); // 对话/弹幕/系统播报/分隔线：成片短句是正常形态，重置碎句计数
+      continue;
+    }
+    for (const sentence of splitSentences(trimmed)) {
+      if (visibleLength(sentence) <= STUTTER_MAX_SENTENCE) {
+        if (runLen === 0) runStartLine = lineNo;
+        runLen += 1;
+        if (runSample.length < 6) runSample.push(sentence);
+      } else {
+        flush();
+      }
+    }
+  }
+  flush();
+  return findings;
+}
+
+function isDivider(trimmed) {
+  return /^-{3,}$/.test(trimmed) || /^[*_]{3,}$/.test(trimmed);
+}
+
+function isNarrativeLine(trimmed) {
+  if (isDivider(trimmed)) return false;
+  // 含引号（对话/弹幕）或系统播报方括号的行不算叙述句
+  return !/[“”"'‘’「」『』【】]/.test(trimmed);
+}
+
+function splitSentences(trimmed) {
+  return trimmed
+    .split(/[。！？!?]/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+function visibleLength(sentence) {
+  const matched = sentence.match(/[一-鿿Ａ-ｚA-Za-z0-9]/g);
+  return matched ? matched.length : 0;
 }
 
 function parseFenceMarker(trimmedLine) {

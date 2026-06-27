@@ -108,3 +108,55 @@ for (const marker of forbidden) {
 NODE
 
 echo "AI pattern detector regression tests passed."
+
+# --- 段落级检测：碎句号 / 长段落 / 破折号（issue #188） ---
+FIXTURE2="$TMP_DIR/fixture-prose.md"
+LONG_PARA="他沿着长廊一直往里走，"
+i=0
+while [ "$i" -lt 16 ]; do
+  LONG_PARA="${LONG_PARA}走过一道又一道紧闭的木门，"
+  i=$((i + 1))
+done
+LONG_PARA="${LONG_PARA}终于在尽头停下，盯着那点暗红看了很久。"
+{
+  # 6 句连续短叙述句 → 碎句号
+  printf '%s\n' '他站起来。' '他走过去。' '门开了。' '风进来。' '他停住。' '心一沉。'
+  # 6 句对话短句 → 必须不报碎句号（成片短句是对话/弹幕的正常形态）
+  printf '%s\n' '“这真的没问题。”' '“一点也不难。”' '“我信你。”' '“你别紧张。”' '“好。”' '“嗯。”'
+  # 破折号 → em-dash（按功能改写，不机械替换）
+  printf '%s\n' '她借着月光看清了桌上那张纸的边角——那是一张旧纸。'
+  # 单段超长 → long-paragraph
+  printf '%s\n' "$LONG_PARA"
+} > "$FIXTURE2"
+
+set +e
+node "$SCRIPT" --json "$FIXTURE2" > "$OUT"
+status=$?
+set -e
+if [ "$status" -ne 1 ]; then
+  echo "FAIL: expected prose detector to exit 1 for positive findings, got $status" >&2
+  cat "$OUT" >&2 || true
+  exit 1
+fi
+
+node - "$OUT" <<'NODE'
+const fs = require('fs');
+const report = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+const counts = report.findings.reduce((m, f) => ((m[f.type] = (m[f.type] || 0) + 1), m), {});
+
+// Exactly one of each new prose type, nothing else. The 6 dialogue lines must NOT
+// trip 碎句号 (成片短句是对话/弹幕的正常形态 — only narrative runs count).
+if (report.findings.length !== 3) {
+  throw new Error(`expected 3 prose findings, got ${report.findings.length}: ${JSON.stringify(report.findings.map((f) => `${f.type}@${f.line}`))}`);
+}
+for (const type of ['period-stutter', 'em-dash', 'long-paragraph']) {
+  if (counts[type] !== 1) throw new Error(`expected exactly 1 ${type}, got ${counts[type] || 0}`);
+}
+// 碎句号 must flag the narrative block (line 1), not the dialogue cluster (lines 7-12).
+const stutter = report.findings.find((f) => f.type === 'period-stutter');
+if (stutter.line !== 1) {
+  throw new Error(`period-stutter should start at the narrative block (line 1), got line ${stutter.line}`);
+}
+NODE
+
+echo "Prose pattern (碎句号/长段落/破折号) regression tests passed."
