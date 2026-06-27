@@ -76,4 +76,47 @@ if [ "$neg_status" -ne 0 ]; then
   exit 1
 fi
 
+# --- 工程词泄漏 meta-leak（issue #173 comment 4814607240）---
+META_POS="$TMP_DIR/meta-positive.md"
+META_NEG="$TMP_DIR/meta-negative.md"
+
+# 正例：纯工程词(细纲/情节点) + 章节结构词(本章/下一章，含对话里的) + 系统标签词(任务描述)。
+cat > "$META_POS" <<'EOF'
+## 第5章 真相
+他握紧了拳头，慢慢站起身来。
+本章他终于发现了真相。
+“该到下一章了。”他低声说。
+按照细纲，他应该先去找她。
+这个情节点其实早就埋下了。
+任务描述：保护好那个女孩。
+EOF
+set +e
+node "$SCRIPT" --json "$META_POS" > "$OUT"
+set -e
+node - "$OUT" <<'NODE'
+const fs = require('fs');
+const report = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+const meta = report.findings.filter((f) => f.type === 'meta-leak');
+if (meta.length !== 5) {
+  throw new Error(`expected 5 meta-leak findings (本章/下一章/细纲/情节点/任务描述), got ${meta.length}: ${JSON.stringify(meta.map((f) => f.excerpt))}`);
+}
+NODE
+
+# 负例：标题行「第N章 章名」(无 ## 前缀) 必须不算工程词泄漏；正常正文 0 命中。
+cat > "$META_NEG" <<'EOF'
+第1章 军宣新星
+他站在台上，看着台下黑压压的人群。
+风很大，吹得旗子猎猎作响。
+他握紧了话筒，深吸一口气。
+EOF
+set +e
+meta_neg_out="$(node "$SCRIPT" "$META_NEG" 2>&1)"
+meta_neg_status=$?
+set -e
+if [ "$meta_neg_status" -ne 0 ]; then
+  echo "FAIL: meta-leak false-positive on chapter title line / clean prose (exit $meta_neg_status):" >&2
+  echo "$meta_neg_out" >&2
+  exit 1
+fi
+
 echo "Degeneration detector regression tests passed."

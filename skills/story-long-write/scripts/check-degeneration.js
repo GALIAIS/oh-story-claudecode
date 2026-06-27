@@ -10,6 +10,7 @@ Detect model-degeneration fingerprints that a degrading model cannot self-report
   - verbatim repetition (复读/打转): a long sentence repeated, or back-to-back identical lines
   - mid-sentence truncation (截断): file ends without terminal/closing punctuation
   - placeholder / refusal / meta leakage (元信息泄漏): 作为AI / 我无法继续 / 此处省略 / 乱码
+  - engineering-word leakage (工程词泄漏): 细纲 / 情节点 / 本章 / 下一章 / 任务描述 漏进正文
 
 Report-only. The script never rewrites — the safe response is to regenerate the
 affected unit (chapter / 摘要) with the finding fed back as a constraint, cap retries,
@@ -32,6 +33,13 @@ const PLACEHOLDER_PATTERNS = [
   { re: /(未完待续|TODO|占位符|placeholder)/, label: '占位符', hard: true },
   { re: /我(无法|不能)(继续(写|创作|生成|下去)|生成(内容|文本|正文)?|创作|续写|完成(这个|本)?(章|篇|创作|请求))/, label: '元信息泄漏（生成拒绝语）', hard: false },
 ];
+
+// 工程词泄漏（正文元信息扫描的确定性版）：弱模型把写作工程词漏进正文，破坏代入感
+// （DeepSeek-v4 这类会在对话里冒「该到下一章了」）。漏词的模型自己发现不了，靠脚本兜。
+// tier1 = 纯写作流水线术语，正文里几乎永不合法；tier2 = 章节结构/歧义词，角色在故事内
+// 真实阅读/讨论「第X章」或故事内系统/界面用语时属例外（report-only，交人/LLM 判）。
+const META_TIER1_RE = /细纲|情节点|卷纲|功能标签|目标情绪|字数目标|章首钩子|章尾钩子/;
+const META_TIER2_RE = /第[一二三四五六七八九十百千万两0-9]+章|本章|这一章|上一章|下一章|上章|下章|前一章|后一章|前文|后文|伏笔|读者|任务描述/;
 
 const options = { json: false, files: [] };
 
@@ -118,6 +126,7 @@ function scanDocument(input) {
   findings.push(...findRepetition(content));
   findings.push(...findTruncation(content));
   findings.push(...findPlaceholders(content));
+  findings.push(...findMetaLeak(content));
   findings.sort((a, b) => a.line - b.line || a.column - b.column);
   return findings;
 }
@@ -227,6 +236,41 @@ function findPlaceholders(content) {
         });
         break; // one finding per line is enough
       }
+    }
+  }
+  return findings;
+}
+
+function findMetaLeak(content) {
+  const findings = [];
+  let firstContentSeen = false;
+  for (const { trimmed, lineNo } of content) {
+    if (!isContent(trimmed)) continue;
+    if (!firstContentSeen) {
+      firstContentSeen = true;
+      // 标题行（第N章 章名，无 ## 前缀时也算）属「标题行以外的正文」之外，排除
+      if (/^第[一二三四五六七八九十百千万两0-9]+章/.test(trimmed)) continue;
+    }
+    let m = META_TIER1_RE.exec(trimmed);
+    if (m) {
+      findings.push({
+        line: lineNo,
+        column: m.index + 1,
+        type: 'meta-leak',
+        message: `工程词泄漏：「${m[0]}」是写作流水线术语，正文里不该出现；改成角色/场景内表达。`,
+        excerpt: compact(trimmed.slice(Math.max(0, m.index - 6), m.index + 18)),
+      });
+      continue; // tier1 命中即可，不再叠 tier2
+    }
+    m = META_TIER2_RE.exec(trimmed);
+    if (m) {
+      findings.push({
+        line: lineNo,
+        column: m.index + 1,
+        type: 'meta-leak',
+        message: `元信息泄漏：「${m[0]}」疑似工程/章节结构词混入正文；改成角色当下可感知的事件锚点或相对时间。例外：角色在故事内真实阅读/讨论「第X章」、真身为作者/读者、或故事内系统/界面用语。`,
+        excerpt: compact(trimmed.slice(Math.max(0, m.index - 6), m.index + 18)),
+      });
     }
   }
   return findings;
