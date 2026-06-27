@@ -435,6 +435,8 @@ story-architect 属于高层级结构设计 agent。轻量题材定位优先由�
 
 **确定性收尾**：本批正文写完后，对所有新写正文文件先运行 `node scripts/normalize-punctuation.js 正文/第XXX章_*.md`（写模式，默认 `--quote-mode keep`），再运行 `node scripts/check-ai-patterns.js --check 正文/第XXX章_*.md`。前者确定性清除正文里的 `……`、破折号 `——`/`—`、双连字符 `--` 和独立行 `---`，防止长篇累积横线和长省略；后者只报告先否定再肯定的高危 AI 句式，命中时必须回正文改掉并复扫到 0。对话打断、拖长音与数字区间不设破折号例外；盐言「」引号不受影响。narrative-writer agent 不运行这些脚本，由主会话在 agent 返回后针对实际落盘文件运行。
 
+**退化防护（弱模型必查）**：正文落盘后再跑 `node scripts/check-degeneration.js --check 正文/第XXX章_*.md`，确定性检测**模型退化**——逐字复读/打转、末尾截断、元信息泄漏（`作为AI`/`我无法续写`/`（此处省略）`/乱码 �）。这是模型无关的外部检查：退化的模型自己发现不了，只能靠脚本兜（弱模型如 m3/GLM 概率性退化）。命中即**只重写受影响的那一章**，把命中证据当约束回喂 narrative-writer（如「检测到复读 '…'，重写本章、删掉重复」），最多重写 2 次；仍命中就**停下，把证据报给用户**（`第N章 行M：'…' 复读K次`），由用户决定重写/跳过/手改——不擅自建议换更强模型。检测器对体裁内的排比/复沓/弹幕刷屏/重复台词保守豁免（短句与对话不算退化），只报告不改写。
+
 #### Agent 调用：consistency-checker
 
 质量检查阶段，如果项目已部署 consistency-checker agent（优先检查 `.claude/agents/consistency-checker.md` 是否存在；不存在时再检查 `.opencode/agents/`，再不存在时检查 `.codex/agents/`），spawn `Agent(subagent_type: "consistency-checker", prompt: "项目目录：{dir}\n检查范围：{本次写作的章节}\n检查类型：事实冲突+伏笔断线+角色属性不一致")` 执行一致性检查，获取 S1-S4 分级报告。如 agent 不可用，由主线程参照 quality-checklist.md 直接检查。
