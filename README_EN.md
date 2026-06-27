@@ -18,7 +18,7 @@ Professional authors follow a three-step method:
 
 Built around four pillars: reverse-engineering hits · plot modularization · layered state management · human-AI collaboration.
 
-> In-development v0.6.19 adds Codex CLI support (`.agents/skills` repo discovery, plus `$story-setup` deployment of `.codex/agents/*.toml` and `.codex/hooks.json`) and OpenClaw skills-only compatibility (single-line frontmatter, `metadata.openclaw`, and `story-setup target_cli=openclaw`).
+> Starting in v0.6.19: Codex CLI support (`.agents/skills` repo discovery plus `$story-setup` deployment of `.codex/agents/*.toml` and `.codex/hooks.json`) and OpenClaw compatibility; custom style `设定/文风.md` takes priority over benchmarks; a deterministic post-write backstop (truncation / repetition / engineering-term / sentence-stutter detection); OpenCode subagents auto-assigned cost-tiered models to cut spend; and chapter outlines budgeted by word count to end the under-length rewrite loop.
 >
 > Starting in v0.6.18, the toolkit fully supports the OpenCode CLI (auto-discovered agents, command and hook adapters) and ships a built-in update reminder; serialized writing adds per-chapter dialogue-voice and style-drift self-checks, and cover generation crop-fills to each platform's exact size (e.g. 番茄 600×800).
 

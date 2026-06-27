@@ -16,7 +16,7 @@
 
 围绕四条线展开：爆款逆向 · 剧情模块化重组 · 上下文状态分层管理 · 人机协同。
 
-> v0.6.19 开发中：新增 Codex CLI 适配（`.agents/skills` repo 发现、`$story-setup` 部署 `.codex/agents/*.toml` 与 `.codex/hooks.json`），并补齐 OpenClaw skills-only 兼容（单行 frontmatter + `metadata.openclaw` + `story-setup target_cli=openclaw`）。
+> v0.6.19 起：新增 Codex CLI 适配（`.agents/skills` repo 发现、`$story-setup` 部署 `.codex/agents/*.toml` 与 `.codex/hooks.json`）与 OpenClaw 兼容；自定义文风 `设定/文风.md` 优先于对标；正文落盘后确定性兜底（截断/复读/工程词/碎句号检测）；OpenCode 子代理按成本自动配模型降本；细纲按字数预算根治正文欠字反复回炉。
 >
 > v0.6.18 起，全面支持 OpenCode CLI（自动发现 agent、命令与 hook 适配），并内置版本更新提醒；续写新增逐章对话声线与文风漂移自检，封面按平台尺寸（如番茄 600×800）居中裁剪兜底。
 

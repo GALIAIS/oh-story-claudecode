@@ -2,6 +2,31 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.6.19
+
+> Codex CLI 适配 + OpenClaw 兼容（#186）· 自定义文风 `设定/文风.md` 优先于对标（#194）· 模型退化/工程词泄漏检测（#173）· 碎句号/长段落检测 + 破折号按功能改写（#188）· 正文兜底 + 跨批连续性确定性网（#195）· OpenCode 子代理模型自动配置降本（#191）· 细纲按字数预算根治欠字反复回炉（#187）
+
+### 新增
+
+- **Codex CLI 适配 + OpenClaw 兼容（#186, #189）**：`$story-setup` 部署 `.codex/agents/*.toml`（由 Claude agent 模板经 `generate-codex-agents.py` 生成）与 `.codex/hooks.json`；Codex 就地用 repo 时扫 `.agents/skills`（symlink 到 `skills/`，#189 加 symlink 守卫并记 Windows `core.symlinks` 坑）。补齐 OpenClaw skills-only 兼容（单行 frontmatter + `metadata.openclaw` + `story-setup target_cli=openclaw`），并加固 OpenCode/Codex 适配漂移守卫（`check-opencode-adapter.sh` / `check-codex-adapter.sh`）。
+- **自定义文风优先于对标文风（#194）**：每章写作前先读 `设定/文风.md`，含实质内容即进入「自定义文风模式」——它作权威风格基（句长 / 软标点 / 对话潜台词 / 情绪交替），对标 / 拆文 `文风.md` 降为参考（原文锚点 + 句长兜底）；`narrative-writer` 文风指纹新增「来源」字段，用户新增/改 `设定/文风.md` 后用新来源刷新句长带快照、不再被旧对标永久压住（三端模板 + `上下文.md.tmpl`）。
+- **模型退化 + 工程词泄漏检测器（#173）**：新增 `check-degeneration.js`（4 份字节同步），确定性检测弱模型退化——逐字复读/打转、末尾截断、占位/拒绝语（`作为AI`/`我无法续写`/`（此处省略）`/乱码 �）、工程词漏进正文（`细纲`/`情节点`/`本章`/`下一章` 等）；每条 finding 带 `severity: blocking|advisory`（blocking 即重写、tier2 章节/歧义词只提示，对话行里的 tier1 工程词降级 advisory）。接入 `story-long-write`/`story-deslop`/`story-review`/`story-short-write` 收尾复扫，`story-review` 子 Agent prompt 补「继承的开放项」做跨批连续性。
+- **碎句号/长段落检测 + 破折号按功能改写（#188）**：`check-ai-patterns.js`（4 份字节同步）新增碎句号（连续短叙述句无呼吸）、长段落（>200 字按镜头断段）检测，与破折号按功能改写建议（打断→动作 beat/短句、拖长音→省略或动作、插入说明→逗号/冒号，不一律改句号）；每条 finding 带 `severity`，混合行（叙述 + 引号内物件）不再被一个引号整行豁免，`story-review` 指定 em-dash 归口 `check-ai-patterns.js` 并与 normalize 去重。
+- **正文兜底 + 跨批连续性确定性网（#195）**：新增 deployed hook `check-prose-after-write.sh`（PostToolUse Write/Edit 落盘后跑硬信号兜底——截断、拒绝语/AI 自指、工程词泄漏、逐行复读、字数欠账），即使主会话漏跑确定性收尾也能兜住；三端（Claude/OpenCode/Codex）轻量网 parity 守卫，Codex 用 Stop 回合末 git 改动集扫描；跨批连续性在会话起点提醒续写断线 / 章节撞名。
+- **OpenCode 子代理模型自动配置（#191）**：`$story-setup` 含 `target_cli=opencode` 时检测 `opencode models` 并按等级为各写作 agent 写入 `model:` 字段，避免低成本 agent 继承主模型造成高额消耗；逐级 AskUserQuestion 选择，支持自定义输入/保留现有/跳过，优先按 `opencode models --verbose` 的成本分级、关键词作回退。
+
+### 改进
+
+- **细纲按字数预算编排，根治正文欠字反复回炉（#187）**：细纲情节点序列改为按字数预算编排——每点标密/疏给预算（密 ≥250、慢镜头爽点 400-600、疏 ≈40、铺垫 120-150），各点求和 Σ 落在 [章目标, 章目标×1.1]；写后字数验证对照预算定位欠账密点、一次性重写到位，不逐点挤牙膏反复回炉，并补 > 章目标×1.1 的超预算收敛分支；调 `story-architect` 时 spawn prompt 注入预算契约并在接收细纲后校验 Σ。
+
+### 修复
+
+- **大纲守卫识别 Windows 盘符绝对路径（#184）**：写正文前的大纲守卫 hook 正确识别 `C:\\...` 形式的 Windows 盘符绝对路径，避免在 Windows 上误判正文文件路径。
+
+### 发布准备
+
+- 版本号升级到 `0.6.19`（`.claude-plugin/marketplace.json` + `skills/story/VERSION`），`.story-deployed` 的 `agents_version` 升级到 `15`、`setup_skill_version` 升级到 `1.2.4`——本版含 deployed hook / agent 模板 / Codex 适配变更，已部署项目需重新运行 `/story-setup` 并新开会话获取。`UPGRADING.md` 新增 v15 条目，`README` / `README_EN` 更新 v0.6.19 题词。
+
 ## v0.6.18
 
 > OpenCode CLI 完整支持（#151）· 内置版本更新提醒（#173）· 对话机械化/论文腔修复（#171）· 续写文风漂移每章自检（#168）· 新名词锚点（#175）· AI 句式硬门槛与 detector 复扫（#166）· 封面平台尺寸裁剪兜底（#176）· Windows 中文系统 hook 字节稳定（#164）
