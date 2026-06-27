@@ -146,9 +146,11 @@ full/lean 模式下，主会话必须把“审查基准包摘要”直接写进�
    ```bash
    node scripts/normalize-punctuation.js --check <正文文件...>
    node scripts/check-ai-patterns.js --check <正文文件...>
+   node scripts/check-degeneration.js --check <正文文件...>
    ```
    - 将 `ellipsis`、`em-dash`、`double-hyphen`、`markdown-divider` 结果作为 `format` 或 `prose` findings 合并进报告；另外人工检查标点节奏是否通篇句号化或随机堆砌，脚本不替代语气判断。
    - 将 `not-is-comparison` 结果作为 `prose` findings 合并进报告，修复建议写成：删否定铺垫，直接写后项，或改为动作/细节呈现。
+   - `check-degeneration.js` 报告模型退化（逐字复读/截断/占位符/工程词泄漏），每条带 `severity: blocking|advisory`：blocking（复读/截断/tier1 工程词）作为 S1/S2 `prose` findings，修复建议是「重新生成该段，不是改写」；advisory（tier2 章节/歧义词）作为 S4。
    - `story-review` 不修改文件；需要自动修复时建议转 `/story-deslop`。
    - 默认 `--quote-mode keep`，不把知乎盐言短篇的 `「」` 当作问题；只有项目明确指定引号风格时才检查对应转换建议。
    - 这些脚本都是 `story-review` 的本地副本，不引用其他 skill 的文件。
@@ -206,6 +208,7 @@ full/lean 模式下，主会话必须把“审查基准包摘要”直接写进�
   审查基准包摘要：{Phase 1 形成的 rubric / fallback 摘要，必须内联}
   Rubric Source: file | embedded fallback
   相关文件路径：{设定/大纲/细纲文件路径}
+  继承的开放项（分批审查必填，无则写「无」）：{从 追踪/伏笔.md 提取的、预计回收章 ≤ 本批末章的已埋未回收/未埋钩子，连同上一批 findings 摘要}
   可选补充参考：如项目已部署 story-setup reference bundle，可读取 `story-setup/references/agent-references/quality-checklist.md`、`story-setup/references/agent-references/plot-core-methods.md`；若不可读，不影响审查。
   检查项：
   1. 这一章是否推进了故事主题？
@@ -217,10 +220,12 @@ full/lean 模式下，主会话必须把“审查基准包摘要”直接写进�
   7. 高潮场景是否用了蓄能→假胜→崩解结构？（参照审查基准包摘要里的高潮构建原则）
   8. 伏笔密度、连载期待和结构信息量是否合理？（伏笔密度通常只作为 S4 结构风险，除非已造成理解混乱）
   9. 按平台 rubric 或通用内容 rubric 逐项对照，标记 PASS/FAIL。
+  10. 继承的开放项里，本批本该兑现的钩子/伏笔是否落空？
 
   输出格式：
   VERDICT: APPROVE / CONCERNS / REJECT
   FINDINGS: 必须使用统一 Findings Schema，severity 必须是 S1/S2/S3/S4。
+  INHERITED_ITEMS: 逐条列继承的开放项 + 已检查 / 未能检查；本批本该兑现却落空的列为 finding。
   RECOMMENDATIONS: [修改建议]
   ```
 
@@ -292,6 +297,7 @@ full/lean 模式下，主会话必须把“审查基准包摘要”直接写进�
   项目路径：{项目根}
   审查范围：{文件路径/章节/必要摘录}
   已知角色：{从设定文件提取角色列表}
+  继承的开放项（分批审查必填，无则写「无」）：{从 追踪/伏笔.md 提取的、预计回收章 ≤ 本批末章的已埋未回收/未埋伏笔，连同上一批 findings 摘要}
   审查基准包摘要：{Phase 1 形成的 rubric / fallback 摘要，必须内联}
   Rubric Source: file | embedded fallback
   可选补充参考：如项目已部署 story-setup reference bundle，可读取 `story-setup/references/agent-references/quality-checklist.md`；若不可读，不影响事实冲突扫描。
@@ -301,10 +307,12 @@ full/lean 模式下，主会话必须把“审查基准包摘要”直接写进�
   3. 伏笔状态是否前后一致（已埋/计划回收/已回收/断线）？
   4. 时间线是否自洽？
   5. 术语、身份、地点、能力边界是否前后一致？
+  6. 继承的开放项里，本批本该回收的伏笔是否仍悬空？
 
   输出格式：
   VERDICT: APPROVE / CONCERNS / REJECT
   FINDINGS: 必须使用统一 Findings Schema，severity 必须是 S1/S2/S3/S4；category 只能使用 consistency / factual / format / causal / rule_boundary。
+  INHERITED_ITEMS: 逐条列继承的开放项 + 已检查 / 未能检查；本批新发现、不在 伏笔.md 的开放钩子单列，供主会话回写 追踪/伏笔.md。
   FACTUAL_RECONCILIATION: [仅列需统一的事实来源或需人工裁决项，不写文学创作建议]
   REASONING_CHAINS: [仅列推理型 finding 的前提/规则 -> 触发事件 -> 矛盾点 -> 需裁决问题]
   ```

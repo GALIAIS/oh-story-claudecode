@@ -319,11 +319,13 @@ AI写作的结尾特征：总想总结、升华、点题。
 ```bash
 node scripts/normalize-punctuation.js <正文文件...>
 node scripts/check-ai-patterns.js --check <正文文件...>
+node scripts/check-degeneration.js --check <正文文件...>
 ```
 
 作用边界：
 - `normalize-punctuation.js` 处理正文里的 `……`、破折号 `——`/`—`、双连字符 `--` 和独立行 `---`；默认不改变引号风格，也不把有功能的 `？` / 少量 `！` 改成句号。
 - `check-ai-patterns.js` 只报告高危 AI 句式，不自动改写；复扫仍有命中时，回到 Gate B 改掉后再跑一次。
+- `check-degeneration.js` 报告模型退化（逐字复读/打转、末尾截断、占位符、工程词泄漏 `细纲`/`情节点` 等），每条带 `severity: blocking|advisory`。blocking 是退化信号，去AI味改不掉，应回去重新生成那一段再 deslop；advisory（tier2 章节/歧义词）只提示。
 - 知乎盐言短篇可保留 `「」`；只有用户或项目明确要求时，才给标点脚本加 `--quote-mode ascii` 或 `--quote-mode yan`。
 - 对话中表示被打断或拖长的 `——` 不再作为例外保留；脚本会改成句号、逗号、动作可承接的断句或中文连接词。无功能标点堆砌由人工 Gate D/E 判断处理。
 - 这些脚本都是 `story-deslop` 的本地副本，不引用其他 skill 的文件。
@@ -392,6 +394,7 @@ node scripts/check-ai-patterns.js --check <正文文件...>
 | [references/anti-ai-writing.md](references/anti-ai-writing.md) | **去AI味完整指南**：预防+三遍法+范例 |
 | [scripts/normalize-punctuation.js](scripts/normalize-punctuation.js) | 文件模式落盘后做确定性标点收尾；默认保留引号风格 |
 | [scripts/check-ai-patterns.js](scripts/check-ai-patterns.js) | 文件模式 Phase 1 预检与 Phase 3.5 复扫；只报告高危 AI 句式，不自动改写 |
+| [scripts/check-degeneration.js](scripts/check-degeneration.js) | 文件模式 Phase 3.5 复扫；报告模型退化（复读/截断/占位符/工程词泄漏），blocking 需重新生成，只报告不改写 |
 
 ---
 

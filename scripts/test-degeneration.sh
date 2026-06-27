@@ -121,4 +121,94 @@ if [ "$meta_neg_status" -ne 0 ]; then
   exit 1
 fi
 
+# --- 引号整行豁免回归：混合行（叙述 + 引号内物件）的复读不能被一个引号整行跳过 ---
+MIX="$TMP_DIR/mix-repeat.md"
+cat > "$MIX" <<'EOF'
+他把纸条展开，上面写着“归来”，她看着窗外那场整夜的大雨，心里空落落的。
+他把纸条展开，上面写着“归来”，她看着窗外那场整夜的大雨，心里空落落的。
+他把纸条展开，上面写着“归来”，她看着窗外那场整夜的大雨，心里空落落的。
+EOF
+set +e
+node "$SCRIPT" --json "$MIX" > "$OUT"
+set -e
+node - "$OUT" <<'NODE'
+const fs = require('fs');
+const r = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+const rep = r.findings.filter((f) => f.type === 'verbatim-repeat');
+if (rep.length === 0) throw new Error('引号整行豁免回归：混合行复读未被检出');
+if (!rep.every((f) => f.severity === 'blocking')) throw new Error('verbatim-repeat 应为 severity=blocking');
+NODE
+
+# 纯台词复沓仍豁免（体裁手法）：三行相同台词不报。
+PURE_DLG="$TMP_DIR/pure-dialogue.md"
+cat > "$PURE_DLG" <<'EOF'
+“我不走。”
+“我不走。”
+“我不走。”
+EOF
+set +e
+pure_dlg_out="$(node "$SCRIPT" "$PURE_DLG" 2>&1)"
+pure_dlg_status=$?
+set -e
+if [ "$pure_dlg_status" -ne 0 ]; then
+  echo "FAIL: 纯台词复沓被误判为复读 (exit $pure_dlg_status):" >&2
+  echo "$pure_dlg_out" >&2
+  exit 1
+fi
+
+# --- severity 字段 + --fail-on 语义：仅 advisory（tier2）时默认退出 1，--fail-on=blocking 退出 0 ---
+ADV="$TMP_DIR/advisory-only.md"
+cat > "$ADV" <<'EOF'
+他翻看着那段记录，想起本章之前发生的事，那个伏笔一直没人提起。
+EOF
+set +e
+node "$SCRIPT" --json "$ADV" > "$OUT"
+adv_all_status=$?
+node "$SCRIPT" --fail-on=blocking "$ADV" >/dev/null 2>&1
+adv_blocking_status=$?
+set -e
+node - "$OUT" <<'NODE'
+const fs = require('fs');
+const r = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+if (r.findings.length === 0) throw new Error('expected tier2 advisory finding');
+if (!r.findings.every((f) => f.severity === 'advisory')) {
+  throw new Error('tier2-only fixture 应全为 advisory: ' + JSON.stringify(r.findings.map((f) => f.severity)));
+}
+NODE
+if [ "$adv_all_status" -ne 1 ]; then
+  echo "FAIL: advisory-only 默认 --fail-on=all 应退出 1，实际 $adv_all_status" >&2
+  exit 1
+fi
+if [ "$adv_blocking_status" -ne 0 ]; then
+  echo "FAIL: advisory-only --fail-on=blocking 应退出 0，实际 $adv_blocking_status" >&2
+  exit 1
+fi
+
+# --- tier1 工程词：叙述行 blocking；对话行（写手/编剧题材合法台词）降级 advisory ---
+TIER1="$TMP_DIR/tier1-dialogue.md"
+cat > "$TIER1" <<'EOF'
+“今天的字数目标是六千字。”他盯着屏幕，烟一根接一根。
+按照字数目标，他还差六千字没写。
+EOF
+set +e
+node "$SCRIPT" --json "$TIER1" > "$OUT"
+set -e
+node - "$OUT" <<'NODE'
+const fs = require('fs');
+const meta = JSON.parse(fs.readFileSync(process.argv[2], 'utf8')).findings.filter((f) => f.type === 'meta-leak');
+const dlg = meta.find((f) => f.line === 1);
+const nar = meta.find((f) => f.line === 2);
+if (!dlg || dlg.severity !== 'advisory') throw new Error('tier1 在对话行应为 advisory: ' + JSON.stringify(dlg));
+if (!nar || nar.severity !== 'blocking') throw new Error('tier1 在叙述行应为 blocking: ' + JSON.stringify(nar));
+NODE
+
+# --- wiring：携带 check-degeneration.js 副本的 skill 必须在 SKILL.md 工作流中实际调用它 ---
+for skill_js in $(find "$REPO_ROOT/skills" -name check-degeneration.js); do
+  skill_md="$(dirname "$(dirname "$skill_js")")/SKILL.md"
+  if [ -f "$skill_md" ] && ! grep -q 'check-degeneration.js' "$skill_md"; then
+    echo "FAIL: $skill_md 携带 check-degeneration.js 副本却未在工作流中调用" >&2
+    exit 1
+  fi
+done
+
 echo "Degeneration detector regression tests passed."

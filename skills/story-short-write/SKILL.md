@@ -301,6 +301,7 @@ metadata: {"openclaw":{"source":"https://github.com/worldwonderer/oh-story-claud
 - [ ] 身体部位同一词全文 ≤ 5 次
 - [ ] 「像」≤ 10 处
 - [ ] `node scripts/check-ai-patterns.js --check 正文.md` 无高危 AI 句式命中
+- [ ] `node scripts/check-degeneration.js --check 正文.md` 无 blocking 退化命中（复读/截断/工程词泄漏）
 
 **中文文本统计注意事项**：
 - `wc -c` 统计的是字节数，中文每字符 3 字节（UTF-8），不等于字数
@@ -316,7 +317,7 @@ metadata: {"openclaw":{"source":"https://github.com/worldwonderer/oh-story-claud
 ### Phase 4：精修打磨
 
 加载 `references/writing-workflow.md` 中的精修清单完成检查。
-重点：开头钩子、情绪曲线、反转铺垫、每句话价值、格式规范、AI 腔排查。文件模式必须先运行 `node scripts/normalize-punctuation.js 正文.md`，再运行 `node scripts/check-ai-patterns.js --check 正文.md`；后者只报告不改写，命中时回到正文改掉并复扫到 0。
+重点：开头钩子、情绪曲线、反转铺垫、每句话价值、格式规范、AI 腔排查。文件模式必须先运行 `node scripts/normalize-punctuation.js 正文.md`，再运行 `node scripts/check-ai-patterns.js --check 正文.md`；后者只报告不改写，命中时回到正文改掉并复扫到 0。另跑 `node scripts/check-degeneration.js --check 正文.md` 报告模型退化（复读/截断/工程词泄漏）；blocking 命中说明该段要重新生成，不是改写。
 
 #### Agent 调用：narrative-writer（去AI味）+ consistency-checker
 
@@ -373,6 +374,7 @@ metadata: {"openclaw":{"source":"https://github.com/worldwonderer/oh-story-claud
 | [references/banned-words.md](references/banned-words.md) | 禁用词表 |
 | [scripts/normalize-punctuation.js](scripts/normalize-punctuation.js) | Phase 4 文件模式确定性标点收尾 |
 | [scripts/check-ai-patterns.js](scripts/check-ai-patterns.js) | Phase 3 完成门槛与 Phase 4 复扫；只报告高危 AI 句式 |
+| [scripts/check-degeneration.js](scripts/check-degeneration.js) | Phase 3 完成门槛与 Phase 4 复扫；报告模型退化（复读/截断/工程词泄漏），blocking 需重新生成 |
 | [references/female-audience-writing.md](references/female-audience-writing.md) | 女频写作时 |
 | [references/character-basics.md](references/character-basics.md) | 人物基础设定 |
 | [references/character-design-methods.md](references/character-design-methods.md) | 人设方法 |
