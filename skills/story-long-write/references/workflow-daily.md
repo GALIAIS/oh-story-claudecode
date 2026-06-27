@@ -12,13 +12,15 @@
 >
 > 对标书路径查找：先 `{项目}/对标/{书名}/`，回退 `拆文库/{书名}/`。
 >
-> **文风缺失**：停止本章写作，不 inline 生成。报错：「对标书 X 缺少 文风.md。请用 `/story-long-analyze` 跑 Stage 6 生成文风，再 `/story-import` 同步。」
+> **自定义文风（`设定/文风.md`，优先级最高）**：主会话每章写作前直接读 `设定/文风.md`（不经 story-explorer——它只看 `对标/文风.md`）。存在且含实质内容（去空白 ≥200 字，或含「句长 / 标点 / 对话 / 锚点 / 笔调」等风格小节标题）即进入「自定义文风模式」：它是本书既定笔调的**权威**风格基，narrative-writer 的句长带 / 标点节奏 / 对话潜台词 / 情绪交替以它为准；对标 / 拆文 `文风.md` 降级为「**参考**」——只供原文锚点范例与句长分布数值兜底，不再是被遵循的最终文风。空 / 仅空白 / 占位 stub 视为不存在。仅接管风格，**不覆盖** `剧情/情绪模块.md` / `剧情/节奏.md` 的情绪与节奏意图（同下「冲突规则」）。**硬门禁不让位**：`设定/文风.md` 里命中硬安全线的写法（`……`、破折号 `——`/`—`、段间空行、三五字碎句）仍按 narrative-writer 归一为句号 / 逗号 / 动作 beat / 单 `\n`；自定义文风只接管句长 / 软标点节奏 / 潜台词 / 情绪交替（要让这些标记原样进正文须放宽题材硬门禁，本期不做）。
+>
+> **文风缺失**：**未进入自定义文风模式**时，对标书缺 `文风.md` 则停止本章写作、不 inline 生成，报错：「对标书 X 缺少 文风.md。请用 `/story-long-analyze` 跑 Stage 6 生成文风，再 `/story-import` 同步。」**已进入自定义文风模式则不 fail-fast**，用 `设定/文风.md` 继续。
 >
 > **模块/节奏缺失**：v12 新契约对标书缺 `剧情/情绪模块.md` 或 `剧情/节奏.md` 时停止本章准备，提示重跑 `/story-long-analyze` Stage 3+ 或重新 `/story-import`；只有 pre-v12 legacy 拆文库可继续写作，story-explorer 必须在 `gaps.legacy_deconstruction` + `gaps.module_missing` / `gaps.rhythm_missing` 记录，依次低置信回退到 `拆文报告.md`、`文风.md` 可借鉴技巧、匹配章摘要 / `剧情/故事线.md`。
 >
 > **冲突规则**：`剧情/情绪模块.md` 与 `剧情/节奏.md` 是情绪和节奏的 canonical / 权威来源；`拆文报告.md`、`剧情/故事线.md` 是投影摘要；`文风.md` 只管风格。若摘要或文风与权威模块/节奏冲突，保留 `gaps.conflict`，正文意图跟随权威文件。
 >
-> **无对标项目**：跳过 Step 2.3，在 2.4 意图确认标记"无对标参考"。不读不存在的文风、不阻塞、不警告。
+> **无对标项目**：无 `设定/文风.md` 时跳过 Step 2.3 文风召回，在 2.4 意图确认标记"无对标参考"，不读不存在的文风、不阻塞、不警告；**有 `设定/文风.md`（自定义文风模式）则用它写作**，并照常做情绪/节奏召回。
 >
 > **多本对标书**：从 `设定/题材定位.md` 读 `主对标书` 字段；缺失时用 `对标/` 下字典序第一本并提示用户补字段。
 >
@@ -100,16 +102,17 @@
    - **2.2 状态筛选**：每章开始前必须确认以下来源已经在本轮 workflow 中读取或刚更新：本章细纲、上一章正文（或上一章刚写入的正文）、`追踪/上下文.md`、`追踪/伏笔.md`、`追踪/时间线.md`；涉及角色时，还必须确认 `追踪/角色状态.md` 或对应 `设定/角色/{角色名}.md` 的来源。"已加载"只指本轮 workflow 内实际读取/更新过的文件，不得用未标明来源的聊天记忆替代。角色最新状态优先从 `追踪/角色状态.md` 筛选（如不存在则从角色设定推断），待回收/推进伏笔从 `追踪/伏笔.md` 筛选；细纲不存在时仍按下方补建流程处理，不允许直接写正文
    - **2.3 对标模块/节奏/文风召回**：
      - 调 story-explorer 的 `benchmark_style_load` query_type（输入：项目目录 + 本章目标情绪 + 本章爽点类型 + 本章目标字数）一次性拿到：`{style_profile_path, style_profile_summary, selected_emotion_module, rhythm_reference, module_source_path, rhythm_source_path, matched_chapter_K, matched_chapter_techniques, anchor_excerpts, gaps}`
-     - 若 `gaps.no_benchmark: true` → 跳过文风召回，在 2.4 意图确认标记"无对标参考"
-     - 若 `gaps.missing_primary_contract: true` → 停止本章准备，按 `repair_action` 提示重跑 `/story-long-analyze` Stage 3+ 或重新 `/story-import`；不得进入 narrative-writer
+     - **自定义文风覆盖（先于下列 gaps 判定）**：主会话直接读 `设定/文风.md`（不经 explorer），含实质内容（去空白 ≥200 字，或含 句长 / 标点 / 对话 / 锚点 / 笔调 小节）则置 `custom_style=true`——它作权威风格基**取代** `style_profile_path` 喂给 narrative-writer（句长 / 标点 / 潜台词 / 情绪交替），对标 / 拆文 `style_profile_path` 降级为参考（原文锚点 + 句长分布数值兜底）。空 / 仅空白 / stub 视为不存在。仅接管风格，**不豁免情绪 / 节奏轴**。
+     - 若 `gaps.no_benchmark: true` → `custom_style` 为真则进入「自定义文风模式」（用 `设定/文风.md` 写作、照常召回情绪 / 节奏）；否则跳过文风召回，在 2.4 意图确认标记"无对标参考"
+     - 若 `gaps.missing_primary_contract: true` → 停止本章准备，按 `repair_action` 提示重跑 `/story-long-analyze` Stage 3+ 或重新 `/story-import`；不得进入 narrative-writer（情绪 / 节奏轴独立于文风轴，**自定义文风模式不豁免此停止**——补 `剧情/情绪模块.md` / `剧情/节奏.md`，而非写 `设定/文风.md`）
      - 若 legacy 的 `gaps.module_missing: true` → 继续写作；`selected_emotion_module` 使用 `拆文报告.md` 读者需求 / 情绪引擎、`文风.md` 可借鉴技巧或匹配章摘要的回退摘要；仍无则写“无”
      - 若 legacy 的 `gaps.rhythm_missing: true` → 继续写作；`rhythm_reference` 使用 `拆文报告.md` 节奏与情绪触动点、匹配章摘要或 `剧情/故事线.md` 的回退摘要；仍无则写“无”
      - 若 `gaps.conflict` 或 `gaps.module_rhythm_conflict: true` → 意图确认必须说明冲突并按 `剧情/情绪模块.md` / `剧情/节奏.md` 的权威优先级执行；不得让 `文风.md` 覆盖情绪/节奏目标
-     - 若 `gaps.profile_missing: true` → 按上文 fail-fast 流程停止
-     - 若 `gaps.profile_degenerate: true`（文风不可用） → 跳过文风、回到默认 Gates 写作
+     - 若 `gaps.profile_missing: true` → `custom_style` 为真则进入自定义文风模式继续；否则按上文 fail-fast 流程停止
+     - 若 `gaps.profile_degenerate: true`（对标文风不可用） → `custom_style` 为真则用 `设定/文风.md` 写作；否则跳过文风、回到默认 Gates 写作
      - 若 `gaps.tone_match_failed: true` → 仅用整书文风写作，不喂 matched_chapter
      - 否则原样传给 `style_profile_path`、`style_profile_summary`、`selected_emotion_module`、`rhythm_reference`、`module_source_path`、`rhythm_source_path`、`matched_chapter_K`、`matched_chapter_techniques`、`anchor_excerpts` 给 Step 2 末尾的 narrative-writer spawn prompt；其中 `selected_emotion_module` 必须进入情绪目标，`rhythm_reference` 必须进入节奏/爆发安排，`matched_chapter_techniques` 必须进入「文风召回指令」。写前准备记录必须保留 `gaps` 原值，尤其 `gaps.module_missing`、`gaps.rhythm_missing`、`gaps.conflict`、`gaps.matched_deep_dive_missing`；若 `matched_deep_dive_missing` 为 true，文风召回指令中明确写“同章深度拆解缺失，已回退黄金三章/文风技巧”，不得在后续报告中反转为 false
-     - **无 story-explorer 时降级**：主会话手动按对标书路径查找，先读 `剧情/情绪模块.md` 选 `selected_emotion_module`，再读 `剧情/节奏.md` 选 `rhythm_reference`，再读 `文风.md` + grep `章节/*_摘要.md` 的「基调」字段找匹配章，然后读对应 `第K章_摘要.md`；如 `第K章_深度拆解.md` 不存在，改读 `第1-3章_深度拆解.md` 中与本章基调最接近的一章。模块/节奏文件缺失时先判定 v12 vs legacy：v12 停止修复，legacy 才按上方回退继续
+     - **无 story-explorer 时降级**：主会话手动按对标书路径查找，先读 `剧情/情绪模块.md` 选 `selected_emotion_module`，再读 `剧情/节奏.md` 选 `rhythm_reference`，先读 `设定/文风.md`（含实质内容则 `custom_style=true`、作权威风格基，对标 `文风.md` 降为参考 / 句长兜底）、再读对标 `文风.md` + grep `章节/*_摘要.md` 的「基调」字段找匹配章，然后读对应 `第K章_摘要.md`；如 `第K章_深度拆解.md` 不存在，改读 `第1-3章_深度拆解.md` 中与本章基调最接近的一章。模块/节奏文件缺失时先判定 v12 vs legacy：v12 停止修复，legacy 才按上方回退继续
    - **2.4 意图确认**：从细纲「目标情绪」字段确认本章情绪目标，综合状态筛选结果 + `selected_emotion_module` + `rhythm_reference` + 文风召回输出，用一句话写本章意图（情绪+节奏+模块+文风指令）。若新版细纲存在，意图确认必须显式带入：内容概括决定起承转合，情节安排决定主线/辅线/事件线/感情线/逻辑线的取舍，人物关系和出场顺序决定镜头进入顺序，情节细化决定代价兑现/收益兑现，结尾设定和钩子决定章尾承接；并落实两条 craft——① 发展/转折=爽点(高潮)的铺垫蓄势，爽点出手前先铺可指认的危机/期待（plot-emotion-system 倒推法，不铺=空洞）；② 装逼/打脸/揭露章把 视角/信息差 经 出场顺序 里的在场配角放大成差异化反应（plot-core-methods 信息差×人际×情绪/集体震惊）；③ 对话声线基线随基调——高压/生死/悲痛 beat→搞笑担当/轻快配角声线让位、信息型配角不当科普嘴、对话逐句承接对方情绪，写进本章意图、生成时即按基调收敛。例：「快节奏打脸——起因=账单暴露，逻辑线=发现→逼问→反证→公开代价；复现 M03‘信息差反杀’的读者期待，关键信息先压后爆，爆发后用一段冷却承接下一钩子；标点照文风里的停顿节奏、对话潜台词用问非所答。」
    - 写正文 → **字数验证（优先 Python 字符统计，`wc -m` 仅作 Unix 备选，< 目标90%则对照情节点字数预算定位欠账密点、一次性重写到配额，不挤牙膏反复回炉；> 章目标×1.1 则压过场/合并疏点收敛；90% 是放行下限非目标，理想落在 [章目标, 章目标×1.1]）** → 检查钩子/爽点 → **正文元信息扫描** → 禁用词扫描
      - **正文元信息扫描**：标题行以外不得出现 `第[一二三四五六七八九十百千万两0-9]+章|上一章|上章|前一章|本章|这一章|前文|后文|伏笔|细纲|读者`。这些词属于写作/工程元信息，必须改成角色当下能感知的事件锚点或相对时间；例如“比第一章那三秒开火更疼”改成“比那三秒开火更疼”。只有角色在故事世界内真实阅读/讨论“第X章”文本，或真实身为作者/读者并谈论读者身份时例外。
