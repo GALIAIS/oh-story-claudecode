@@ -19,17 +19,7 @@ skills/
 ├── story-review/            # 多视角审查
 ├── story-cover/             # 封面生成
 └── browser-cdp/             # 浏览器操控
-scripts/
-├── static-check.sh                    # frontmatter + 引用路径 + 死文件 + 交叉引用
-├── check-hook-regex-sync.sh           # hook 伏笔状态检测行为
-├── check-shared-files.sh              # 跨 skill 同名副本一致性
-├── check-story-setup-deployment.sh    # story-setup 部署完整性
-├── check-opencode-adapter.sh          # OpenCode commands/agents/plugin/config 适配层检查
-├── test-opencode-cli-e2e.sh           # 本机 OpenCode CLI 真实加载 smoke（需已安装 opencode）
-├── check-openclaw-skills.sh           # OpenClaw AgentSkills/frontmatter 兼容性
-├── generate-codex-agents.py           # Claude agent 模板 → Codex TOML
-├── check-codex-adapter.sh             # Codex repo skills / custom-agent TOML / hooks 静态检查
-└── test-codex-hooks.sh                # Codex hooks 合成 stdin/stdout 契约测试
+scripts/                       # 开发守卫 / 测试 / 代码生成（20 个脚本的完整索引见 scripts/README.md）
 ```
 
 每个 skill 由一个 `SKILL.md`（入口）和 `references/` 目录（知识库）组成。
@@ -74,11 +64,12 @@ PR 自动运行 `.github/workflows/cross-platform.yml`。static-check job 跑以
 - `scripts/check-shared-files.sh` — 跨 skill 同名副本字节一致性
 - `scripts/check-story-setup-deployment.sh` — story-setup 部署完整性
 - `scripts/check-opencode-adapter.sh` — OpenCode adapter 同步、commands/agents/plugin/config 锚点检查
-- `scripts/test-opencode-cli-e2e.sh` — 本机可选 OpenCode CLI smoke：确认 repo skills 发现、临时项目 13 commands / 7 agents / plugin 真实加载
 - `scripts/check-openclaw-skills.sh` — OpenClaw 单行 frontmatter、`metadata.openclaw` 与可选真实 CLI 发现检查
 - `scripts/check-codex-adapter.sh` — Codex repo skills symlink、custom-agent TOML（schema + 生成确定性）与 hooks 锚点检查
 - `scripts/test-codex-hooks.sh` — Codex hooks 合成事件测试
 - 采集脚本 `node --check` 语法校验
+
+以上为代表性列举；**强制清单按 `.github/workflows/cross-platform.yml` 为准**，每个脚本的用途与触发时机见 [scripts/README.md](scripts/README.md)。`scripts/test-opencode-cli-e2e.sh` 需本机安装 opencode，**不在 CI**，只在本地可选运行（见下）。
 
 另有 windows / macos job 验证 cdp-utils 加载与 setup 脚本 dry-run。
 
