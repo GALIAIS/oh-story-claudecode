@@ -155,10 +155,18 @@ node scripts/check-ai-patterns.js --check <正文文件...>
 Phase 2 诊断完成后，按以下顺序选择执行路径：
 
 1. **已在 narrative-writer 子代理内**：直接 inline 执行 Gate A-G，不再 spawn（嵌套 spawn 会被静默降级）。
-2. **未在子代理内且 agent 目录（优先 `.claude/agents/`，其次 `.opencode/agents/`，再检查 `.codex/agents/`）下的 `narrative-writer.md` 或 `.codex/agents/narrative-writer.toml` 存在**：spawn `Agent(subagent_type: "narrative-writer", prompt: "项目目录：{dir}\n任务描述：去AI味\n检查范围：{待处理的正文文件}\nAI味等级：{Phase 2 诊断结果}\n处理策略：{轻度/中度/重度对应的 Gate 范围}\n模式处理：按 references/anti-ai-writing.md 的问题模式目录执行；模式 8（解释腔/上帝视角/安排感）归入 Gate G，其余新增模式归入 Gate A-F 的对应处理。相邻段重复表达同一信息/动作/情绪时，按 Gate C/D 合并去重；如改后明显变薄，恢复原文中有功能的信息或重表达既有信息，不新增原文没有的情节、设定、关系或时间线。")`。
+2. **未在子代理内且 agent 目录（优先 `.claude/agents/`，其次 `.opencode/agents/`，再检查 `.codex/agents/`）下的 `narrative-writer.md` 或 `.codex/agents/narrative-writer.toml` 存在**：spawn `Agent(subagent_type: "narrative-writer", prompt: "项目目录：{dir}\n任务描述：去AI味\n检查范围：{待处理的正文文件}\nAI味等级：{Phase 2 诊断结果}\n处理策略：{轻度/中度/重度对应的 Gate 范围}\n删除优先：每条 AI 味项先判能否删除——删后不丢伏笔/钩子/角色/情节/必要信息/必要转折的直接删，会丢才进 Gate 润色；删除服从比例上限与字数下限，跌破下限改降AI重写。\n模式处理：按 references/anti-ai-writing.md 的问题模式目录执行；模式 8（解释腔/上帝视角/安排感）归入 Gate G，其余新增模式归入 Gate A-F 的对应处理。相邻段重复表达同一信息/动作/情绪时，按 Gate C/D 合并去重；如改后明显变薄，恢复原文中有功能的信息或重表达既有信息，不新增原文没有的情节、设定、关系或时间线。")`。
 3. **agent 不存在或 spawn 失败**：主线程 inline 执行。
 
-以下为各 Gate 的详细规则（无论 agent 还是主线程执行，均须遵循）：
+#### 删除优先判断（先于各 Gate）
+
+每条被标记项先判能否删除，再考虑润色——很多 AI 味句是废话（解释、注水、凑数），润色后照样冗余。
+
+1. 删掉后是否丢失伏笔、钩子、角色特征、情节推进、必要信息或必要转折？都不丢则直接删，不进 Gate。
+2. 丢任意一项 → 保留信息进对应 Gate 改写（只删"怎么说"的 AI 味，不删"说什么"）。
+3. 删除服从既有"过度去AI味保护"与 Phase 2 比例上限：不整段删、不删剧情功能；若删后跌破字数下限，改为降AI重写，不删完再用新废话凑字。
+
+以下为各 Gate 的详细规则（删不掉的标记项按此润色；无论 agent 还是主线程执行，均须遵循）：
 
 #### 门禁 A：禁用词替换
 

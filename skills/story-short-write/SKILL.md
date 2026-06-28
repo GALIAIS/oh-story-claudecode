@@ -320,7 +320,7 @@ metadata: {"openclaw":{"source":"https://github.com/worldwonderer/oh-story-claud
 #### Agent 调用：narrative-writer（去AI味）+ consistency-checker
 
 精修阶段，如果项目已部署对应 agent，可 spawn：
-- `Agent(subagent_type: "narrative-writer", prompt: "项目目录：{dir}\n任务描述：去AI味+格式检查\n检查范围：{正文文件}\n必须检查：先否定再肯定的翻转句式；发现后直接改成后项或动作细节")` — 执行去AI味（7 Gate）和格式合规检查
+- `Agent(subagent_type: "narrative-writer", prompt: "项目目录：{dir}\n任务描述：去AI味+格式检查\n检查范围：{正文文件}\n删除优先：每条 AI 味项先判能否删除——删后不丢伏笔/钩子/角色/情节/必要信息的直接删，会丢才润色（删除受比例上限与字数下限约束，跌破下限改降AI重写）\n必须检查：先否定再肯定的翻转句式；发现后直接改成后项或动作细节")` — 执行去AI味（7 Gate）和格式合规检查
 - `Agent(subagent_type: "consistency-checker", prompt: "项目目录：{dir}\n检查范围：{正文文件}\n检查类型：事实冲突+伏笔断线+角色属性不一致")` — 执行一致性检查
 
 如 agent 不可用，由主线程直接执行。
